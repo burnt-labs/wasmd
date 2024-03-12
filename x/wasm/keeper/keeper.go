@@ -453,19 +453,19 @@ func (k Keeper) migrate(
 		contractInfo.IBCPortID = ibcPort
 	}
 
-	env := types.NewEnv(ctx, contractAddress)
+	// env := types.NewEnv(ctx, contractAddress)
 
 	// prepare querier
-	querier := k.newQueryHandler(ctx, contractAddress)
+	// querier := k.newQueryHandler(ctx, contractAddress)
 
-	prefixStoreKey := types.GetContractStorePrefix(contractAddress)
-	vmStore := types.NewStoreAdapter(prefix.NewStore(ctx.KVStore(k.storeKey), prefixStoreKey))
-	gas := k.runtimeGasForContract(ctx)
-	res, gasUsed, err := k.wasmVM.Migrate(newCodeInfo.CodeHash, env, msg, vmStore, cosmwasmAPI, &querier, k.gasMeter(ctx), gas, costJSONDeserialization)
-	k.consumeRuntimeGas(ctx, gasUsed)
-	if err != nil {
-		return nil, errorsmod.Wrap(types.ErrMigrationFailed, err.Error())
-	}
+	// prefixStoreKey := types.GetContractStorePrefix(contractAddress)
+	// vmStore := types.NewStoreAdapter(prefix.NewStore(ctx.KVStore(k.storeKey), prefixStoreKey))
+	// gas := k.runtimeGasForContract(ctx)
+	// res, gasUsed, err := k.wasmVM.Migrate(newCodeInfo.CodeHash, env, msg, vmStore, cosmwasmAPI, &querier, k.gasMeter(ctx), gas, costJSONDeserialization)
+	// k.consumeRuntimeGas(ctx, gasUsed)
+	// if err != nil {
+	// 	return nil, errorsmod.Wrap(types.ErrMigrationFailed, err.Error())
+	// }
 	// delete old secondary index entry
 	k.removeFromContractCodeSecondaryIndex(ctx, contractAddress, k.getLastContractHistoryEntry(ctx, contractAddress))
 	// persist migration updates
@@ -480,13 +480,13 @@ func (k Keeper) migrate(
 		sdk.NewAttribute(types.AttributeKeyContractAddr, contractAddress.String()),
 	))
 
-	ctx = types.WithSubMsgAuthzPolicy(ctx, authZ.SubMessageAuthorizationPolicy(types.AuthZActionMigrateContract))
-	data, err := k.handleContractResponse(ctx, contractAddress, contractInfo.IBCPortID, res.Messages, res.Attributes, res.Data, res.Events)
-	if err != nil {
-		return nil, errorsmod.Wrap(err, "dispatch")
-	}
+	// ctx = types.WithSubMsgAuthzPolicy(ctx, authZ.SubMessageAuthorizationPolicy(types.AuthZActionMigrateContract))
+	// data, err := k.handleContractResponse(ctx, contractAddress, contractInfo.IBCPortID, res.Messages, res.Attributes, res.Data, res.Events)
+	// if err != nil {
+	// 	return nil, errorsmod.Wrap(err, "dispatch")
+	// }
 
-	return data, nil
+	return []byte{}, nil
 }
 
 // Sudo allows privileged access to a contract. This can never be called by an external tx, but only by
