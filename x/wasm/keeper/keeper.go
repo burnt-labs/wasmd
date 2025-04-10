@@ -438,14 +438,20 @@ func (k Keeper) execute(ctx context.Context, contractAddress, caller sdk.AccAddr
 	gasLeft := k.runtimeGasForContract(sdkCtx)
 	res, gasUsed, execErr := k.wasmVM.Execute(codeInfo.CodeHash, env, info, msg, prefixStore, cosmwasmAPI, querier, k.gasMeter(sdkCtx), gasLeft, costJSONDeserialization)
 	k.consumeRuntimeGas(sdkCtx, gasUsed)
+
+	fmt.Println("we are executing")
 	if execErr != nil {
+		fmt.Printf("error querying [wasmd]: %+v", execErr)
 		return nil, errorsmod.Wrap(types.ErrVMError, execErr.Error())
 	}
 	if res == nil {
 		// If this gets executed, that's a bug in wasmvm
+		//
+		fmt.Printf("error querying [wasmd]: %+v", execErr)
 		return nil, errorsmod.Wrap(types.ErrVMError, "internal wasmvm error")
 	}
 	if res.Err != "" {
+		fmt.Printf("error querying [wasmd]: %+v", res.Err)
 		return nil, types.MarkErrorDeterministic(errorsmod.Wrap(types.ErrExecuteFailed, res.Err))
 	}
 
@@ -878,12 +884,14 @@ func (k Keeper) QuerySmart(ctx context.Context, contractAddr sdk.AccAddress, req
 
 	env := types.NewEnv(sdkCtx, contractAddr)
 	queryResult, gasUsed, qErr := k.wasmVM.Query(codeInfo.CodeHash, env, req, prefixStore, cosmwasmAPI, querier, k.gasMeter(sdkCtx), k.runtimeGasForContract(sdkCtx), costJSONDeserialization)
+	fmt.Println("we are querying!!!")
 	k.consumeRuntimeGas(sdkCtx, gasUsed)
 	if qErr != nil {
 		fmt.Printf("error querying [wasmd]: %+v", qErr)
 		return nil, errorsmod.Wrap(types.ErrVMError, qErr.Error())
 	}
 	if queryResult.Err != "" {
+		fmt.Printf("error querying [wasmd]: %+v", qErr)
 		return nil, types.MarkErrorDeterministic(errorsmod.Wrap(types.ErrQueryFailed, queryResult.Err))
 	}
 	return queryResult.Ok, nil
