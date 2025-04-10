@@ -880,6 +880,7 @@ func (k Keeper) QuerySmart(ctx context.Context, contractAddr sdk.AccAddress, req
 	queryResult, gasUsed, qErr := k.wasmVM.Query(codeInfo.CodeHash, env, req, prefixStore, cosmwasmAPI, querier, k.gasMeter(sdkCtx), k.runtimeGasForContract(sdkCtx), costJSONDeserialization)
 	k.consumeRuntimeGas(sdkCtx, gasUsed)
 	if qErr != nil {
+		fmt.Printf("error querying [wasmd]: %+v", qErr)
 		return nil, errorsmod.Wrap(types.ErrVMError, qErr.Error())
 	}
 	if queryResult.Err != "" {
