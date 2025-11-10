@@ -1011,7 +1011,9 @@ func (k Keeper) contractInstance(ctx context.Context, contractAddress sdk.AccAdd
 			Wrapf("address %s", contractAddress.String())
 	}
 	var contractInfo types.ContractInfo
-	k.cdc.MustUnmarshal(contractBz, &contractInfo)
+	if err := SafeUnmarshalContractInfo(k.cdc, contractBz, &contractInfo); err != nil {
+		return types.ContractInfo{}, types.CodeInfo{}, nil, err
+	}
 
 	codeInfoBz, err := store.Get(types.GetCodeKey(contractInfo.CodeID))
 	if err != nil {
@@ -1023,7 +1025,9 @@ func (k Keeper) contractInstance(ctx context.Context, contractAddress sdk.AccAdd
 			Wrapf("code id %d", contractInfo.CodeID)
 	}
 	var codeInfo types.CodeInfo
-	k.cdc.MustUnmarshal(codeInfoBz, &codeInfo)
+	if err := SafeUnmarshalCodeInfo(k.cdc, codeInfoBz, &codeInfo); err != nil {
+		return types.ContractInfo{}, types.CodeInfo{}, nil, err
+	}
 	prefixStoreKey := types.GetContractStorePrefix(contractAddress)
 	prefixStore := prefix.NewStore(runtime.KVStoreAdapter(k.storeService.OpenKVStore(ctx)), prefixStoreKey)
 	return contractInfo, codeInfo, types.NewStoreAdapter(prefixStore), nil
@@ -1081,7 +1085,9 @@ func (k Keeper) GetContractInfo(ctx context.Context, contractAddress sdk.AccAddr
 	if contractBz == nil {
 		return nil
 	}
-	k.cdc.MustUnmarshal(contractBz, &contract)
+	if err := SafeUnmarshalContractInfo(k.cdc, contractBz, &contract); err != nil {
+		panic(err)
+	}
 	return &contract
 }
 
@@ -1110,7 +1116,9 @@ func (k Keeper) IterateContractInfo(ctx context.Context, cb func(sdk.AccAddress,
 
 	for ; iter.Valid(); iter.Next() {
 		var contract types.ContractInfo
-		k.cdc.MustUnmarshal(iter.Value(), &contract)
+		if err := SafeUnmarshalContractInfo(k.cdc, iter.Value(), &contract); err != nil {
+			panic(err)
+		}
 		// cb returns true to stop early
 		if cb(iter.Key(), contract) {
 			break
@@ -1159,7 +1167,9 @@ func (k Keeper) GetCodeInfo(ctx context.Context, codeID uint64) *types.CodeInfo 
 	if codeInfoBz == nil {
 		return nil
 	}
-	k.cdc.MustUnmarshal(codeInfoBz, &codeInfo)
+	if err := SafeUnmarshalCodeInfo(k.cdc, codeInfoBz, &codeInfo); err != nil {
+		panic(err)
+	}
 	return &codeInfo
 }
 
@@ -1179,7 +1189,9 @@ func (k Keeper) IterateCodeInfos(ctx context.Context, cb func(uint64, types.Code
 
 	for ; iter.Valid(); iter.Next() {
 		var c types.CodeInfo
-		k.cdc.MustUnmarshal(iter.Value(), &c)
+		if err := SafeUnmarshalCodeInfo(k.cdc, iter.Value(), &c); err != nil {
+			panic(err)
+		}
 		// cb returns true to stop early
 		if cb(binary.BigEndian.Uint64(iter.Key()), c) {
 			return
@@ -1197,7 +1209,9 @@ func (k Keeper) GetByteCode(ctx context.Context, codeID uint64) ([]byte, error) 
 	if codeInfoBz == nil {
 		return nil, nil
 	}
-	k.cdc.MustUnmarshal(codeInfoBz, &codeInfo)
+	if err := SafeUnmarshalCodeInfo(k.cdc, codeInfoBz, &codeInfo); err != nil {
+		return nil, err
+	}
 	return k.wasmVM.GetCode(codeInfo.CodeHash)
 }
 
