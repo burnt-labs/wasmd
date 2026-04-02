@@ -79,7 +79,7 @@ type WasmVMResponseHandler interface {
 // list of account types that are accepted for wasm contracts. Chains importing wasmd
 // can overwrite this list with the WithAcceptedAccountTypesOnContractInstantiation option.
 var defaultAcceptedAccountTypes = map[reflect.Type]struct{}{
-	reflect.TypeOf(&authtypes.BaseAccount{}): {},
+	reflect.TypeFor[*authtypes.BaseAccount](): {},
 }
 
 // Keeper will have a reference to Wasm Engine with it's own data directory.
@@ -823,26 +823,6 @@ func (k Keeper) appendToContractHistory(ctx context.Context, contractAddr sdk.Ac
 	return nil
 }
 
-// appendToContractHistoryForGenesis is optimized for genesis import where
-// contract history is known to be empty. It writes entries sequentially starting
-// from position 0 without checking for existing entries.
-//
-// WARNING: Only use during genesis import via importContract(). For runtime operations,
-// use appendToContractHistory() which safely handles existing history.
-//
-// Performance: Avoids O(N) iteration over existing entries when state is known to be empty.
-// This provides significant speedup during genesis import with many contracts.
-func (k Keeper) appendToContractHistoryForGenesis(ctx context.Context, contractAddr sdk.AccAddress, newEntries ...types.ContractCodeHistoryEntry) error {
-	store := k.storeService.OpenKVStore(ctx)
-	for pos, e := range newEntries {
-		key := types.GetContractCodeHistoryElementKey(contractAddr, uint64(pos))
-		if err := store.Set(key, k.cdc.MustMarshal(&e)); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (k Keeper) GetContractHistory(ctx context.Context, contractAddr sdk.AccAddress) []types.ContractCodeHistoryEntry {
 	prefixStore := prefix.NewStore(runtime.KVStoreAdapter(k.storeService.OpenKVStore(ctx)), types.GetContractCodeHistoryElementPrefix(contractAddr))
 	r := make([]types.ContractCodeHistoryEntry, 0)
@@ -1492,8 +1472,6 @@ func (k Keeper) importAutoIncrementID(ctx context.Context, sequenceKey []byte, v
 	return store.Set(sequenceKey, bz)
 }
 
-// importContract imports a contract instance during genesis initialization.
-// Uses the optimized appendToContractHistoryForGenesis since contract history is known to be empty.
 func (k Keeper) importContract(ctx context.Context, contractAddr sdk.AccAddress, c *types.ContractInfo, state []types.Model, historyEntries []types.ContractCodeHistoryEntry) error {
 	if !k.containsCodeInfo(ctx, c.CodeID) {
 		return types.ErrNoSuchCodeFn(c.CodeID).Wrapf("code id %d", c.CodeID)
@@ -1510,7 +1488,7 @@ func (k Keeper) importContract(ctx context.Context, contractAddr sdk.AccAddress,
 		return err
 	}
 
-	err = k.appendToContractHistoryForGenesis(ctx, contractAddr, historyEntries...)
+	err = k.appendToContractHistoryGenesis(ctx, contractAddr, historyEntries...)
 	if err != nil {
 		return err
 	}

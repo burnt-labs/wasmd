@@ -49,7 +49,7 @@ func TestModuleMigrations(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			var expModuleVersion uint64 = 5
+			var expModuleVersion uint64 = 4
 			assert.Equal(t, expModuleVersion, gotVM[types.ModuleName])
 			gotParams := wasmApp.WasmKeeper.GetParams(ctx)
 			assert.Equal(t, spec.exp, gotParams)
@@ -93,7 +93,7 @@ func TestAccessConfigMigrations(t *testing.T) {
 
 	// then
 	require.NoError(t, err)
-	var expModuleVersion uint64 = 5
+	var expModuleVersion uint64 = 4
 	assert.Equal(t, expModuleVersion, gotVM[types.ModuleName])
 
 	// any address was not migrated
