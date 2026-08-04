@@ -8,7 +8,10 @@ import (
 	"github.com/CosmWasm/wasmd/x/wasm/types"
 )
 
-var _ types.ContractOpsKeeper = PermissionedKeeper{}
+var (
+	_ types.ContractOpsKeeper                = PermissionedKeeper{}
+	_ types.ContractOpsKeeperWithAddressHash = PermissionedKeeper{}
+)
 
 // decoratedKeeper contains a subset of the wasm keeper that are already or can be guarded by an authorization policy in the future
 type decoratedKeeper interface {
@@ -89,6 +92,43 @@ func (p PermissionedKeeper) Instantiate2(
 		label,
 		deposit,
 		PredictableAddressGenerator(creator, salt, initMsg, fixMsg),
+		p.authZPolicy,
+	)
+}
+
+// Instantiate2WithAddressHash creates an instance of a Wasm contract using a
+// caller-provided 32-byte hash for predictable address derivation. The
+// instantiated code ID and its checksum still control code loading,
+// permissions, execution, gas, capabilities, history, and ContractInfo. Only
+// the address namespace is replaced.
+//
+// This is a keeper-only capability for trusted modules. Public Wasm messages
+// continue to use Instantiate2 and the instantiated code's checksum.
+func (p PermissionedKeeper) Instantiate2WithAddressHash(
+	ctx sdk.Context,
+	codeID uint64,
+	addressHash []byte,
+	creator, admin sdk.AccAddress,
+	initMsg []byte,
+	label string,
+	deposit sdk.Coins,
+	salt []byte,
+) (sdk.AccAddress, []byte, error) {
+	if len(addressHash) != types.ContractAddrLen {
+		return nil, nil, types.ErrInvalid.Wrapf("address hash must be %d bytes", types.ContractAddrLen)
+	}
+
+	return p.nested.instantiate(
+		ctx,
+		codeID,
+		creator,
+		admin,
+		initMsg,
+		label,
+		deposit,
+		func(_ context.Context, _ uint64, _ []byte) sdk.AccAddress {
+			return BuildContractAddressPredictable(addressHash, creator, salt, nil)
+		},
 		p.authZPolicy,
 	)
 }

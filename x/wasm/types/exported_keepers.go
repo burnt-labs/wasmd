@@ -85,6 +85,26 @@ type ContractOpsKeeper interface {
 	SetAccessConfig(ctx sdk.Context, codeID uint64, caller sdk.AccAddress, newConfig AccessConfig) error
 }
 
+// ContractOpsKeeperWithAddressHash extends ContractOpsKeeper with a
+// keeper-only predictable instantiation method whose address namespace is
+// independent of the instantiated code checksum. Chains should expose this
+// capability only to trusted modules that own a deterministic address
+// namespace; it is intentionally not part of the public Wasm message service.
+type ContractOpsKeeperWithAddressHash interface {
+	ContractOpsKeeper
+
+	Instantiate2WithAddressHash(
+		ctx sdk.Context,
+		codeID uint64,
+		addressHash []byte,
+		creator, admin sdk.AccAddress,
+		initMsg []byte,
+		label string,
+		deposit sdk.Coins,
+		salt []byte,
+	) (sdk.AccAddress, []byte, error)
+}
+
 // IBCContractKeeper IBC lifecycle event handler
 type IBCContractKeeper interface {
 	OnOpenChannel(
