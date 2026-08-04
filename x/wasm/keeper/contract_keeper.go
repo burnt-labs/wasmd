@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"context"
+	"crypto/sha256"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
@@ -10,7 +11,7 @@ import (
 
 var (
 	_ types.ContractOpsKeeper                = PermissionedKeeper{}
-	_ types.ContractOpsKeeperWithAddressHash = PermissionedKeeper{}
+	_ types.ContractOpsKeeperWithAddressHash = AddressHashPermissionedKeeper{}
 )
 
 // decoratedKeeper contains a subset of the wasm keeper that are already or can be guarded by an authorization policy in the future
@@ -54,6 +55,31 @@ func NewGovPermissionKeeper(nested decoratedKeeper) *PermissionedKeeper {
 
 func NewDefaultPermissionKeeper(nested decoratedKeeper) *PermissionedKeeper {
 	return NewPermissionedKeeper(nested, DefaultAuthorizationPolicy{})
+}
+
+// AddressHashPermissionedKeeper is an explicitly granted extension of
+// PermissionedKeeper. Keeping the method on a distinct dynamic type prevents
+// modules that receive an ordinary ContractOpsKeeper from type-asserting into
+// the address-hash capability.
+type AddressHashPermissionedKeeper struct {
+	PermissionedKeeper
+}
+
+func NewAddressHashPermissionedKeeper(
+	nested decoratedKeeper,
+	authZPolicy types.AuthorizationPolicy,
+) *AddressHashPermissionedKeeper {
+	return &AddressHashPermissionedKeeper{
+		PermissionedKeeper: *NewPermissionedKeeper(nested, authZPolicy),
+	}
+}
+
+func NewGovPermissionKeeperWithAddressHash(nested decoratedKeeper) *AddressHashPermissionedKeeper {
+	return NewAddressHashPermissionedKeeper(nested, GovAuthorizationPolicy{})
+}
+
+func NewDefaultPermissionKeeperWithAddressHash(nested decoratedKeeper) *AddressHashPermissionedKeeper {
+	return NewAddressHashPermissionedKeeper(nested, DefaultAuthorizationPolicy{})
 }
 
 func (p PermissionedKeeper) Create(ctx sdk.Context, creator sdk.AccAddress, wasmCode []byte, instantiateAccess *types.AccessConfig) (codeID uint64, checksum []byte, err error) {
@@ -104,7 +130,7 @@ func (p PermissionedKeeper) Instantiate2(
 //
 // This is a keeper-only capability for trusted modules. Public Wasm messages
 // continue to use Instantiate2 and the instantiated code's checksum.
-func (p PermissionedKeeper) Instantiate2WithAddressHash(
+func (p AddressHashPermissionedKeeper) Instantiate2WithAddressHash(
 	ctx sdk.Context,
 	codeID uint64,
 	addressHash []byte,
@@ -114,8 +140,8 @@ func (p PermissionedKeeper) Instantiate2WithAddressHash(
 	deposit sdk.Coins,
 	salt []byte,
 ) (sdk.AccAddress, []byte, error) {
-	if len(addressHash) != types.ContractAddrLen {
-		return nil, nil, types.ErrInvalid.Wrapf("address hash must be %d bytes", types.ContractAddrLen)
+	if len(addressHash) != sha256.Size {
+		return nil, nil, types.ErrInvalid.Wrapf("address hash must be %d bytes", sha256.Size)
 	}
 
 	return p.nested.instantiate(

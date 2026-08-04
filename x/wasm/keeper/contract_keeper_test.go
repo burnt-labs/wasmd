@@ -179,8 +179,8 @@ func TestInstantiate2WithAddressHash(t *testing.T) {
 
 	hackatom := StoreHackatomExampleContract(t, parentCtx, keepers)
 	reflect := StoreReflectContract(t, parentCtx, keepers)
-	contractKeeper := NewDefaultPermissionKeeper(keepers.WasmKeeper)
-	addressHash := bytes.Repeat([]byte{0xA5}, types.ContractAddrLen)
+	contractKeeper := NewDefaultPermissionKeeperWithAddressHash(keepers.WasmKeeper)
+	addressHash := bytes.Repeat([]byte{0xA5}, 32)
 	salt := []byte("module-owned-address")
 	expected := BuildContractAddressPredictable(addressHash, hackatom.CreatorAddr, salt, nil)
 
@@ -237,6 +237,12 @@ func TestInstantiate2WithAddressHash(t *testing.T) {
 			salt,
 		)
 		require.ErrorIs(t, err, types.ErrInvalid)
+	})
+
+	t.Run("ordinary permissioned keepers do not expose the capability", func(t *testing.T) {
+		ordinaryKeeper := NewDefaultPermissionKeeper(keepers.WasmKeeper)
+		_, ok := any(ordinaryKeeper).(types.ContractOpsKeeperWithAddressHash)
+		require.False(t, ok)
 	})
 }
 
