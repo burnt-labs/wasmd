@@ -32,10 +32,12 @@ const (
 )
 
 // DisableAllProposals contains no wasm gov types.
+//
 // Deprecated: all gov v1beta1 types will be removed
 var DisableAllProposals []ProposalType
 
 // EnableAllProposals contains all wasm gov types as keys.
+//
 // Deprecated: all gov v1beta1 types will be removed
 var EnableAllProposals = []ProposalType{
 	ProposalTypeStoreCode,
