@@ -22,11 +22,11 @@ func (k Keeper) ImportAutoIncrementID(ctx context.Context, sequenceKey []byte, v
 
 // appendToContractHistoryGenesis is a helper function to append to the contract history for genesis.
 // it skips creating iterators and assumes the contract history is already sorted
-// position starts from 0
+// Contract history positions start at 1, matching appendToContractHistory.
 func (k Keeper) appendToContractHistoryGenesis(ctx context.Context, contractAddr sdk.AccAddress, newEntries ...types.ContractCodeHistoryEntry) error {
 	store := k.storeService.OpenKVStore(ctx)
 	for pos, e := range newEntries {
-		key := types.GetContractCodeHistoryElementKey(contractAddr, uint64(pos+1))
+		key := types.GetContractCodeHistoryElementKey(contractAddr, uint64(pos)+1)
 		if err := store.Set(key, k.cdc.MustMarshal(&e)); err != nil {
 			return err
 		}
