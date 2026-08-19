@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -170,6 +171,79 @@ func TestInstantiate2(t *testing.T) {
 			assert.NotEmpty(t, gotAddr)
 		})
 	}
+}
+
+func TestInstantiate2WithAddressHash(t *testing.T) {
+	parentCtx, keepers := CreateTestInput(t, false, AvailableCapabilities)
+	parentCtx = parentCtx.WithGasMeter(storetypes.NewInfiniteGasMeter())
+
+	hackatom := StoreHackatomExampleContract(t, parentCtx, keepers)
+	reflect := StoreReflectContract(t, parentCtx, keepers)
+	contractKeeper := NewDefaultPermissionKeeperWithAddressHash(keepers.WasmKeeper)
+	addressHash := bytes.Repeat([]byte{0xA5}, 32)
+	salt := []byte("module-owned-address")
+	expected := BuildContractAddressPredictable(addressHash, hackatom.CreatorAddr, salt, nil)
+
+	tests := []struct {
+		name    string
+		codeID  uint64
+		initMsg []byte
+	}{
+		{
+			name:   "hackatom implementation",
+			codeID: hackatom.CodeID,
+			initMsg: mustMarshal(t, HackatomExampleInitMsg{
+				Verifier:    RandomAccountAddress(t),
+				Beneficiary: RandomAccountAddress(t),
+			}),
+		},
+		{
+			name:    "reflect implementation",
+			codeID:  reflect.CodeID,
+			initMsg: []byte(`{}`),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, _ := parentCtx.CacheContext()
+			got, _, err := contractKeeper.Instantiate2WithAddressHash(
+				ctx,
+				tc.codeID,
+				addressHash,
+				hackatom.CreatorAddr,
+				nil,
+				tc.initMsg,
+				"fixed address hash",
+				nil,
+				salt,
+			)
+			require.NoError(t, err)
+			require.Equal(t, expected, got)
+			require.Equal(t, tc.codeID, keepers.WasmKeeper.GetContractInfo(ctx, got).CodeID)
+		})
+	}
+
+	t.Run("rejects an invalid address hash", func(t *testing.T) {
+		_, _, err := contractKeeper.Instantiate2WithAddressHash(
+			parentCtx,
+			hackatom.CodeID,
+			addressHash[:len(addressHash)-1],
+			hackatom.CreatorAddr,
+			nil,
+			[]byte(`{}`),
+			"invalid address hash",
+			nil,
+			salt,
+		)
+		require.ErrorIs(t, err, types.ErrInvalid)
+	})
+
+	t.Run("ordinary permissioned keepers do not expose the capability", func(t *testing.T) {
+		ordinaryKeeper := NewDefaultPermissionKeeper(keepers.WasmKeeper)
+		_, ok := any(ordinaryKeeper).(types.ContractOpsKeeperWithAddressHash)
+		require.False(t, ok)
+	})
 }
 
 func TestQuerierError(t *testing.T) {
