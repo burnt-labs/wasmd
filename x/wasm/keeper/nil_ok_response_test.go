@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	channeltypesv2 "github.com/cosmos/ibc-go/v10/modules/core/04-channel/v2/types"
+	ibcexported "github.com/cosmos/ibc-go/v10/modules/core/exported"
 
 	"github.com/CosmWasm/wasmd/x/wasm/keeper/wasmtesting"
 	"github.com/CosmWasm/wasmd/x/wasm/types"
@@ -151,4 +153,61 @@ func TestHandleIBCBasicContractResponseRejectsNil(t *testing.T) {
 		err = keepers.WasmKeeper.handleIBCBasicContractResponse(ctx, contractAddr, "port", nil)
 	})
 	require.ErrorIs(t, err, types.ErrVMError)
+}
+
+// nilOkReceiveResult is the malformed value for the packet-receive entrypoints:
+// an IBCReceiveResult with neither Ok nor Err populated.
+func nilOkReceiveResult() *wasmvmtypes.IBCReceiveResult {
+	return &wasmvmtypes.IBCReceiveResult{}
+}
+
+// newIBCContract seeds an IBC-capable contract, which the packet-receive
+// entrypoints require.
+func newIBCContract(t *testing.T) (sdk.Context, *wasmtesting.MockWasmEngine, *TestKeepers, sdk.AccAddress) {
+	t.Helper()
+
+	var m wasmtesting.MockWasmEngine
+	wasmtesting.MakeIBCInstantiable(&m)
+	ctx, keepers := CreateTestInput(t, false, AvailableCapabilities)
+	example := SeedNewContractInstance(t, ctx, keepers, &m)
+
+	return ctx, &m, &keepers, example.Contract
+}
+
+// OnRecvPacket has its own guard rather than reaching the shared basic-response
+// helper, and returns (nil, error) rather than a failure ack, so it needs its
+// own case.
+func TestOnRecvPacketRejectsNilOkResponse(t *testing.T) {
+	ctx, m, keepers, contractAddr := newIBCContract(t)
+	m.IBCPacketReceiveFn = func(_ wasmvm.Checksum, _ wasmvmtypes.Env, _ wasmvmtypes.IBCPacketReceiveMsg, _ wasmvm.KVStore, _ wasmvm.GoAPI, _ wasmvm.Querier, _ wasmvm.GasMeter, _ uint64, _ wasmvmtypes.UFraction) (*wasmvmtypes.IBCReceiveResult, uint64, error) {
+		return nilOkReceiveResult(), 1, nil
+	}
+
+	var (
+		ack ibcexported.Acknowledgement
+		err error
+	)
+	require.NotPanics(t, func() {
+		ack, err = keepers.WasmKeeper.OnRecvPacket(ctx, contractAddr,
+			wasmvmtypes.IBCPacketReceiveMsg{Packet: wasmvmtypes.IBCPacket{Data: []byte("my data")}})
+	})
+	require.ErrorIs(t, err, types.ErrVMError)
+	require.Nil(t, ack)
+}
+
+// OnRecvIBC2Packet returns a failure RecvPacketResult instead of an error, so
+// assert that shape specifically rather than reusing the error-returning case.
+func TestOnRecvIBC2PacketRejectsNilOkResponse(t *testing.T) {
+	ctx, m, keepers, contractAddr := newIBCContract(t)
+	m.IBC2PacketReceiveFn = func(_ wasmvm.Checksum, _ wasmvmtypes.Env, _ wasmvmtypes.IBC2PacketReceiveMsg, _ wasmvm.KVStore, _ wasmvm.GoAPI, _ wasmvm.Querier, _ wasmvm.GasMeter, _ uint64, _ wasmvmtypes.UFraction) (*wasmvmtypes.IBCReceiveResult, uint64, error) {
+		return nilOkReceiveResult(), 1, nil
+	}
+
+	var res channeltypesv2.RecvPacketResult
+	require.NotPanics(t, func() {
+		res = keepers.WasmKeeper.OnRecvIBC2Packet(ctx, contractAddr,
+			wasmvmtypes.IBC2PacketReceiveMsg{Payload: wasmvmtypes.IBC2Payload{Value: []byte("my data")}})
+	})
+	require.Equal(t, channeltypesv2.PacketStatus_Failure, res.Status)
+	require.Contains(t, string(res.Acknowledgement), "nil ok response")
 }
