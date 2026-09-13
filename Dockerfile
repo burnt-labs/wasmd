@@ -15,8 +15,8 @@ RUN apk add git
 
 WORKDIR /code
 COPY . /code/
-# Needs --secret id=gitconfig,src=<gitconfig redirecting wasmvm to the private fork>
-ENV GOPRIVATE=github.com/CosmWasm/wasmvm
+# Needs --secret id=gitconfig,src=<gitconfig with credentials for github.com/burnt-labs/wasmvm_priv>
+ENV GOPRIVATE=github.com/burnt-labs/wasmvm_priv
 RUN --mount=type=secret,id=gitconfig,target=/root/.gitconfig go mod download
 
 # The private fork ships the muslc static libs as .xz inside the Go module.

@@ -283,3 +283,5 @@ retract (
 	// see https://github.com/CosmWasm/wasmd/issues/1651
 	v0.42.0
 )
+
+replace github.com/CosmWasm/wasmvm/v3 => github.com/burnt-labs/wasmvm_priv/v3 v3.0.8-rc.2
