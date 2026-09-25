@@ -46,14 +46,21 @@ An end-to-end proof of concept is required. Unit tests or keeper harnesses that
 bypass transaction encoding, routing, the ante handler chain, or block execution
 do not demonstrate on-chain exploitability on their own.
 
-Run the proof of concept against a locally running XION node configured with
-mainnet parameters and execute the attack through standard transaction
-broadcast. Broadcast acceptance alone is not sufficient: show inclusion in a
-block, the successful execution result, and the resulting state change or
-security impact. For chain-halt or consensus-failure findings, instead show the
-triggering transaction or input sequence, the height or round at which progress
-stops or diverges, and the observed halt or failure condition; block inclusion
-and successful execution are not required when the failure prevents them.
+The proof of concept should run against a locally running XION node configured
+with mainnet parameters — the same setup used by the end-to-end test suite in
+[`burnt-labs/xion`](https://github.com/burnt-labs/xion), with the XION ante
+handler chain, module set, and governance configuration matching mainnet —
+and execute the attack through standard transaction broadcast. Simulated
+environments that model chain state without running a full node do not
+demonstrate exploitability.
+
+Broadcast acceptance alone is not sufficient: show inclusion in a block, the
+successful execution result, and the resulting state change or security impact.
+For chain-halt or consensus-failure findings that remain in scope under the
+canonical program, instead show the triggering transaction or input sequence,
+the height or round at which progress stops or diverges, and the observed halt
+or failure condition; block inclusion and successful execution are not required
+when the failure prevents them.
 
 ## Permissioned Chain Policy
 
