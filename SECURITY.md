@@ -34,6 +34,9 @@ upstream base. A finding that reproduces on the unmodified upstream base
 belongs to CosmWasm and is not eligible under this program, regardless of its
 impact on XION. Report those findings through the
 [CosmWasm security policy](https://github.com/CosmWasm/advisories/blob/main/SECURITY.md).
+This repository policy covers the `wasmd` module delta only. Smart-contract
+vulnerabilities belong only where the canonical program explicitly scopes the
+affected contract; all other contract bugs remain out of scope here.
 
 Scope applies to the fork version in the current XION mainnet release. Findings
 affecting only deprecated versions, or already remediated in the currently
