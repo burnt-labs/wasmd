@@ -54,9 +54,10 @@ security impact.
 XION mainnet operates with `code_upload_access: Nobody`. Uploading new contract
 code requires governance approval. An attack that depends on uploading
 attacker-controlled contract code or instantiating a new attacker-controlled
-contract on mainnet is out of scope. A finding in a contract already deployed on
-mainnet is not excluded by this rule; prior approval of a code ID alone does not
-make attacker deployment part of the authorized threat model.
+contract on mainnet is out of scope. A finding against the `wasmd` module that
+is exploitable via a contract already deployed on mainnet is not excluded by
+this rule; prior approval of a code ID alone does not make attacker deployment
+part of the authorized threat model.
 
 ## Privileged Actor Policy
 
