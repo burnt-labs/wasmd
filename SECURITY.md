@@ -47,7 +47,10 @@ Run the proof of concept against a locally running XION node configured with
 mainnet parameters and execute the attack through standard transaction
 broadcast. Broadcast acceptance alone is not sufficient: show inclusion in a
 block, the successful execution result, and the resulting state change or
-security impact.
+security impact. For chain-halt or consensus-failure findings, instead show the
+triggering transaction or input sequence, the height or round at which progress
+stops or diverges, and the observed halt or failure condition; block inclusion
+and successful execution are not required when the failure prevents them.
 
 ## Permissioned Chain Policy
 
