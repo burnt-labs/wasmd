@@ -26,8 +26,9 @@ severity assessment or reward eligibility.
 ## Fork Scope
 
 Only the delta between this fork and its upstream base is in scope. XION fork
-tags use the form `<upstream-tag>-xion.N`; remove the `-xion.N` suffix to
-upstream base and diff against that tag. A finding that reproduces on the
+tags use the form `<upstream-tag>-xion.N`; the `-xion.N` suffix identifies the
+fork portion. Remove it to identify the upstream base, then diff the fork
+against that tag. A finding that reproduces on the
 unmodified upstream base belongs to CosmWasm and is not eligible under this
 program, regardless of its impact on XION. Report those findings through the
 [CosmWasm security policy](https://github.com/CosmWasm/advisories/blob/main/SECURITY.md).
