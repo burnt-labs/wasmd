@@ -27,9 +27,10 @@ severity assessment or reward eligibility.
 
 Only the delta between this fork and its upstream base is in scope. XION fork
 tags use the form `<upstream-tag>-xion.N`; remove the `-xion.N` suffix to
-identify the upstream base and diff against that tag. A finding that reproduces
-on the unmodified upstream base belongs to CosmWasm and is not eligible under
-this program, regardless of its impact on XION.
+upstream base and diff against that tag. A finding that reproduces on the
+unmodified upstream base belongs to CosmWasm and is not eligible under this
+program, regardless of its impact on XION. Report those findings through the
+[CosmWasm security policy](https://github.com/CosmWasm/advisories/blob/main/SECURITY.md).
 
 Scope applies to the fork version in the current XION mainnet release. Findings
 affecting only deprecated versions, or already remediated in the currently
@@ -52,16 +53,18 @@ security impact.
 
 XION mainnet operates with `code_upload_access: Nobody`. Uploading new contract
 code requires governance approval. An attack that depends on uploading
-attacker-controlled contract code to mainnet is out of scope. A finding that is
-exploitable through code already approved for mainnet is not excluded by this
-rule.
+attacker-controlled contract code or instantiating a new attacker-controlled
+contract on mainnet is out of scope. A finding in a contract already deployed on
+mainnet is not excluded by this rule; prior approval of a code ID alone does not
+make attacker deployment part of the authorized threat model.
 
 ## Privileged Actor Policy
 
 Findings are classified at **Medium at most** when the attack must begin with
 control of governance, a module authority, validator or operator credentials,
 or another privileged role — or requires that holder to cooperate — and the
-demonstrated action is already within that role's intended authority.
+demonstrated impact depends on that holder acting self-destructively, outside
+normal operation, or in collusion while using authority the role already has.
 
 The cap does not apply when a flaw lets an attacker who starts without that
 privilege obtain it or bypass its authorization check, or lets a legitimately
@@ -79,9 +82,9 @@ reward terms.
 ## Responsible Disclosure and Safe Harbor
 
 Do not test against XION mainnet or other production systems. Use a local
-environment or infrastructure you control, do not access or disclose user data,
-do not disrupt services, and keep the finding private until disclosure is
-coordinated.
+environment or infrastructure you control, do not access, modify, or disclose
+user data, do not disrupt services, and keep the finding private until
+disclosure is coordinated.
 
 Naming this repository as an asset establishes eligibility, not permission to
 test a production deployment. Good-faith research within the authorized local
