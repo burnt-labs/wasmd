@@ -25,12 +25,14 @@ severity assessment or reward eligibility.
 
 ## Fork Scope
 
-Only the delta between this fork and its upstream base is in scope. XION fork
-tags use the form `<upstream-tag>-xion.N`; the `-xion.N` suffix identifies the
-fork portion. Remove it to identify the upstream base, then diff the fork
-against that tag. A finding that reproduces on the
-unmodified upstream base belongs to CosmWasm and is not eligible under this
-program, regardless of its impact on XION. Report those findings through the
+Only the delta between this fork and its upstream base is in scope. Use the
+fork-to-upstream mapping in the canonical program to identify the exact pair.
+For the current XION mainnet release, compare
+`burnt-labs/wasmd@v0.61.14-xion.3` with `CosmWasm/wasmd@v0.61.14`; the
+`-xion.N` suffix identifies the fork portion and is removed to identify the
+upstream base. A finding that reproduces on the unmodified upstream base
+belongs to CosmWasm and is not eligible under this program, regardless of its
+impact on XION. Report those findings through the
 [CosmWasm security policy](https://github.com/CosmWasm/advisories/blob/main/SECURITY.md).
 
 Scope applies to the fork version in the current XION mainnet release. Findings
@@ -57,11 +59,10 @@ and successful execution are not required when the failure prevents them.
 
 XION mainnet operates with `code_upload_access: Nobody`. Uploading new contract
 code requires governance approval. An attack that depends on uploading
-attacker-controlled contract code or instantiating a new attacker-controlled
-contract on mainnet is out of scope. A finding against the `wasmd` module that
-is exploitable via a contract already deployed on mainnet is not excluded by
-this rule; prior approval of a code ID alone does not make attacker deployment
-part of the authorized threat model.
+attacker-controlled contract code to mainnet is out of scope. A finding against
+the `wasmd` module that is exploitable through code already approved for
+mainnet is not excluded by this rule, including when the proof of concept
+instantiates or controls a new contract from an approved code ID.
 
 ## Privileged Actor Policy
 
