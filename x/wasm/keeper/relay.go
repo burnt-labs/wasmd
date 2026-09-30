@@ -196,6 +196,9 @@ func (k Keeper) OnRecvPacket(
 		}, nil
 	}
 	if res.Ok == nil {
+		// A ContractResult always sets exactly one of ok/error. Neither set is
+		// malformed contract or wasmvm output; guard the deref so it cannot
+		// nil-panic the node (a panic here halts any non-recovered caller).
 		return nil, errorsmod.Wrap(types.ErrVMError, "internal wasmvm error: nil ok response")
 	}
 	// note submessage reply results can overwrite the `Acknowledgement` data
@@ -394,6 +397,8 @@ func (k Keeper) IBCDestinationCallback(
 
 func (k Keeper) handleIBCBasicContractResponse(ctx sdk.Context, addr sdk.AccAddress, id string, res *wasmvmtypes.IBCBasicResponse) error {
 	if res == nil {
+		// Callers pass res.Ok straight in, so a nil ok response arrives here as a
+		// nil pointer. Guard it centrally rather than at each call site.
 		return errorsmod.Wrap(types.ErrVMError, "internal wasmvm error: nil ok response")
 	}
 	_, err := k.handleContractResponse(ctx, addr, id, res.Messages, res.Attributes, nil, res.Events)
