@@ -3,7 +3,7 @@ module github.com/CosmWasm/wasmd
 go 1.25.14
 
 require (
-	github.com/CosmWasm/wasmvm/v3 v3.0.8-rc.2
+	github.com/CosmWasm/wasmvm/v3 v3.0.8
 	github.com/cosmos/cosmos-proto v1.0.0-beta.5
 	github.com/cosmos/cosmos-sdk v0.53.6
 	github.com/cosmos/gogogateway v1.2.0 // indirect
@@ -283,5 +283,3 @@ retract (
 	// see https://github.com/CosmWasm/wasmd/issues/1651
 	v0.42.0
 )
-
-replace github.com/CosmWasm/wasmvm/v3 => github.com/burnt-labs/wasmvm_priv/v3 v3.0.8-rc.2
