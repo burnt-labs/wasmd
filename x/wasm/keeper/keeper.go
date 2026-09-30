@@ -1488,7 +1488,7 @@ func (k Keeper) importContract(ctx context.Context, contractAddr sdk.AccAddress,
 		return err
 	}
 
-	err = k.appendToContractHistory(ctx, contractAddr, historyEntries...)
+	err = k.appendToContractHistoryGenesis(ctx, contractAddr, historyEntries...)
 	if err != nil {
 		return err
 	}
