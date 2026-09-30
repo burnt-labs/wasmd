@@ -364,6 +364,9 @@ func (k Keeper) instantiate(
 		return nil, nil, types.MarkErrorDeterministic(errorsmod.Wrap(types.ErrInstantiateFailed, res.Err))
 	}
 	if res.Ok == nil {
+		// A ContractResult always sets exactly one of ok/error. Neither set is
+		// malformed contract or wasmvm output; guard the deref so it cannot
+		// nil-panic the node (a panic here halts any non-recovered caller).
 		return nil, nil, errorsmod.Wrap(types.ErrVMError, "internal wasmvm error: nil ok response")
 	}
 
@@ -455,7 +458,11 @@ func (k Keeper) execute(ctx context.Context, contractAddress, caller sdk.AccAddr
 	if res.Err != "" {
 		return nil, types.MarkErrorDeterministic(errorsmod.Wrap(types.ErrExecuteFailed, res.Err))
 	}
+
 	if res.Ok == nil {
+		// A ContractResult always sets exactly one of ok/error. Neither set is
+		// malformed contract or wasmvm output; guard the deref so it cannot
+		// nil-panic the node (a panic here halts any non-recovered caller).
 		return nil, errorsmod.Wrap(types.ErrVMError, "internal wasmvm error: nil ok response")
 	}
 
@@ -624,6 +631,12 @@ func (k Keeper) callMigrateEntrypoint(
 	if res.Err != "" {
 		return nil, types.MarkErrorDeterministic(errorsmod.Wrap(types.ErrMigrationFailed, res.Err))
 	}
+	if res.Ok == nil {
+		// A ContractResult always sets exactly one of ok/error. Neither set is
+		// malformed contract or wasmvm output; guard the deref so it cannot
+		// nil-panic the node (a panic here halts any non-recovered caller).
+		return nil, errorsmod.Wrap(types.ErrVMError, "internal wasmvm error: nil ok response")
+	}
 	return res.Ok, nil
 }
 
@@ -665,7 +678,11 @@ func (k Keeper) Sudo(ctx context.Context, contractAddress sdk.AccAddress, msg []
 	if res.Err != "" {
 		return nil, types.MarkErrorDeterministic(errorsmod.Wrap(types.ErrExecuteFailed, res.Err))
 	}
+
 	if res.Ok == nil {
+		// A ContractResult always sets exactly one of ok/error. Neither set is
+		// malformed contract or wasmvm output; guard the deref so it cannot
+		// nil-panic the node (a panic here halts any non-recovered caller).
 		return nil, errorsmod.Wrap(types.ErrVMError, "internal wasmvm error: nil ok response")
 	}
 
@@ -711,7 +728,11 @@ func (k Keeper) reply(ctx sdk.Context, contractAddress sdk.AccAddress, reply was
 	if res.Err != "" {
 		return nil, types.MarkErrorDeterministic(errorsmod.Wrap(types.ErrExecuteFailed, res.Err))
 	}
+
 	if res.Ok == nil {
+		// A ContractResult always sets exactly one of ok/error. Neither set is
+		// malformed contract or wasmvm output; guard the deref so it cannot
+		// nil-panic the node (a panic here halts any non-recovered caller).
 		return nil, errorsmod.Wrap(types.ErrVMError, "internal wasmvm error: nil ok response")
 	}
 
