@@ -13,14 +13,14 @@ jobs:
   setup-dependencies:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
       - name: Restore Go modules cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /go/pkg/mod
           key: go-mod-${{ hashFiles('**/go.sum') }}
@@ -35,7 +35,7 @@ jobs:
         run: git gc
 
       - name: Save source code cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .git
           key: go-src-${{ github.sha }}
@@ -45,8 +45,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: setup-dependencies
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - name: Check go mod tidy
@@ -58,14 +58,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: setup-dependencies
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:
-          version: v2.1.6
+          version: v2.11.4
           args: --tests=false --timeout=5m0s
 
   test-cover:
@@ -75,14 +75,14 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
       - name: Restore Go modules cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /go/pkg/mod
           key: go-mod-${{ hashFiles('**/go.sum') }}
@@ -114,7 +114,7 @@ jobs:
           fi
 
       - name: Upload coverage and logs
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-${{ matrix.shard }}
           path: |
@@ -125,10 +125,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: test-cover
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Download coverage artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
 
@@ -144,14 +144,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: test-cover
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
       - name: Restore Go modules cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /go/pkg/mod
           key: go-mod-${{ hashFiles('**/go.sum') }}
@@ -170,7 +170,7 @@ jobs:
 
       - name: Upload test system artifacts
         if: failure()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: test-system-artifacts
           path: /tmp/test-system-artifacts
@@ -180,14 +180,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: test-cover
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
       - name: Restore Go modules cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /go/pkg/mod
           key: go-mod-${{ hashFiles('**/go.sum') }}
@@ -207,9 +207,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: setup-dependencies
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
@@ -222,14 +222,14 @@ jobs:
     env:
       IMAGE_NAME: cosmwasm/wasmd
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
       - name: Set up Docker
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build Docker image
         run: |
