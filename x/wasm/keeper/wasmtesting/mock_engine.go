@@ -118,7 +118,7 @@ func (m *MockWasmEngine) IBC2PacketAck(codeID wasmvm.Checksum, env wasmvmtypes.E
 }
 
 func (m *MockWasmEngine) IBC2PacketReceive(codeID wasmvm.Checksum, env wasmvmtypes.Env, msg wasmvmtypes.IBC2PacketReceiveMsg, store wasmvm.KVStore, goapi wasmvm.GoAPI, querier wasmvm.Querier, gasMeter wasmvm.GasMeter, gasLimit uint64, deserCost wasmvmtypes.UFraction) (*wasmvmtypes.IBCReceiveResult, uint64, error) {
-	if m.IBCPacketReceiveFn == nil {
+	if m.IBC2PacketReceiveFn == nil {
 		panic("not supposed to be called!")
 	}
 	return m.IBC2PacketReceiveFn(codeID, env, msg, store, goapi, querier, gasMeter, gasLimit, deserCost)
