@@ -94,11 +94,14 @@ jobs:
           export GORACE=halt_on_error=1
           export GO111MODULE=on
 
+          # TestAppStateDeterminism replays 500-block simulations several
+          # times per seed and exceeds the 8m package timeout under -race.
+          # The determinism job runs it without -race.
           FAILED=0
           SHARD_INDEX=$(( ${{ matrix.shard }} - 1 ))
           for pkg in $(go list ./... | grep -v '/simulation' | awk "NR % 4 == $SHARD_INDEX"); do
             id=$(echo "$pkg" | sed 's|[/.]|_|g')
-            if ! go test -mod=readonly -timeout 8m -race -coverprofile=profiles/$id.out -covermode=atomic -tags='ledger test_ledger_mock' "$pkg" 2>&1 | tee logs/$id.log; then
+            if ! go test -mod=readonly -timeout 8m -race -skip '^TestAppStateDeterminism$' -coverprofile=profiles/$id.out -covermode=atomic -tags='ledger test_ledger_mock' "$pkg" 2>&1 | tee logs/$id.log; then
               FAILED=1
             fi
           done
@@ -208,6 +211,25 @@ jobs:
 
       - name: Run simulations
         run: make test-sim-deterministic test-sim-multi-seed-short test-sim-import-export
+
+  determinism:
+    runs-on: ubuntu-latest
+    needs: setup-dependencies
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Restore Go modules cache
+        uses: actions/cache@v6
+        with:
+          path: /go/pkg/mod
+          key: go-mod-${{ hashFiles('**/go.sum') }}
+
+      - name: Run app state determinism simulation
+        run: go test -mod=readonly -timeout 30m -run '^TestAppStateDeterminism$' -tags='ledger test_ledger_mock' ./app
 
   docker-image:
     runs-on: ubuntu-latest
