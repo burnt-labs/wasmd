@@ -13,9 +13,6 @@
 - Port the Xion fork to Cosmos SDK v0.55.0, CometBFT v0.40.0 and Go 1.26.5.
 - Remove legacy parameter subspaces and the protocol pool. Chains at wasm consensus version 2 must upgrade through v0.70.4-xion.1 before this release.
 
-- Port the Xion fork to Cosmos SDK v0.55.0, CometBFT v0.40.0 and Go 1.26.5.
-- Remove legacy parameter subspaces and the protocol pool. Chains at wasm consensus version 2 must upgrade through v0.70.4-xion.1 before this release.
-
 ## [v0.70.4](https://github.com/CosmWasm/wasmd/tree/v0.70.4) (2026-09-28)
 
 [Full Changelog](https://github.com/CosmWasm/wasmd/compare/v0.70.3...v0.70.4)
