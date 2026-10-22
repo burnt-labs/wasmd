@@ -4,6 +4,14 @@
 
 [Full Changelog](https://github.com/CosmWasm/wasmd/compare/v0.70.5...HEAD)
 
+## [v0.70.5-xion.4](https://github.com/burnt-labs/wasmd/tree/v0.70.5-xion.4)
+
+[Full Changelog](https://github.com/CosmWasm/wasmd/compare/v0.70.5...burnt-labs:wasmd:v0.70.5-xion.4)
+
+- Rebuild the Xion fork on upstream v0.70.5 (wasmvm v3.0.9).
+- Port the Xion fork to Cosmos SDK v0.55.0, CometBFT v0.40.0 and Go 1.26.5.
+- Remove legacy parameter subspaces and the protocol pool. Chains at wasm consensus version 2 must upgrade through a v0.70.4 xion release (SDK 0.54) before this release.
+
 ## [v0.70.5](https://github.com/CosmWasm/wasmd/tree/v0.70.5) (2026-10-09)
 
 [Full Changelog](https://github.com/CosmWasm/wasmd/compare/v0.70.4...v0.70.5)

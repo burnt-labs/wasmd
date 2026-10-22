@@ -16,12 +16,8 @@ canonical; where the documents differ, the program terms govern.
 through **Security → Report a vulnerability** on this repository, or email
 [security@burnt.com](mailto:security@burnt.com).
 
-We acknowledge receipt within **5 business days** and provide a triage decision
-within **14 days**. Active exploitation, or confirmed attacker awareness of an
-unpatched vulnerability, escalates the issue to Critical **response handling**
-— prioritization, coordination, and disclosure timing — regardless of its
-original classification. That escalation does not change the finding's
-severity assessment or reward eligibility.
+**The Burnt Labs bug bounty program is currently paused.** We welcome
+submissions, but we will not respond to them and will not pay rewards.
 
 ## Fork Scope
 
@@ -91,9 +87,9 @@ legitimately control, or to test with production privileges they do control.
 
 ## Rewards and Severity
 
-Only **High** and **Critical** findings are reward eligible. The canonical
-program defines severity, exclusions, KYC, duplicate handling, and all other
-reward terms.
+No rewards are paid while the bug bounty program is paused. Submitting a
+report does not entitle you to a bounty or any other payment. The canonical
+program defines severity and exclusions.
 
 ## Responsible Disclosure and Safe Harbor
 

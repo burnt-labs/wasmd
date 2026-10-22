@@ -225,6 +225,9 @@ func (k Keeper) OnRecvIBC2Packet(
 	}
 
 	if res.Ok == nil {
+		// A ContractResult always sets exactly one of ok/error. Neither set is
+		// malformed contract or wasmvm output; guard the deref so it cannot
+		// nil-panic the node (a panic here halts any non-recovered caller).
 		return channeltypesv2.RecvPacketResult{
 			Status:          channeltypesv2.PacketStatus_Failure,
 			Acknowledgement: []byte(errorsmod.Wrap(types.ErrVMError, "internal wasmvm error: nil ok response").Error()),
