@@ -49,6 +49,9 @@ while [ $# -gt 0 ]; do
   shift
 done
 [ -n "${utag:-}" ] || usage 1
+if [ "$mode" = tag ] && [ "$skip_tests" = 1 ] && [ "$dry" = 0 ]; then
+  die "--skip-tests is only allowed with --dry-run in tag mode: a release tag needs a passing test run"
+fi
 [[ $utag =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || die "expected an upstream tag like v0.70.5, got $utag"
 line="xion/v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.x"
 
@@ -106,6 +109,8 @@ if [ "$mode" = tag ]; then
   git rev-parse -q --verify "refs/remotes/origin/$line" >/dev/null || die "origin has no $line"
   head=$(git rev-parse "origin/$line")
   git merge-base --is-ancestor "$utag_commit" "$head" || die "$utag is not in origin/$line yet; land the sync PR first"
+  newest=$(git tag --merged "$head" | grep -E "^${utag%.*}\.[0-9]+\$" | sort -V | tail -1)
+  [ "$newest" = "$utag" ] || die "origin/$line already contains upstream $newest; tag that version, not $utag"
   newtag=$(next_tag)
   wt=$(mktemp -d "${TMPDIR:-/tmp}/xion-sync-tag.XXXXXX")
   git worktree add -q --detach "$wt" "$head"
@@ -115,6 +120,8 @@ if [ "$mode" = tag ]; then
     say "dry run: nothing tagged or pushed. Would tag $newtag on origin/$line ($head)"
     exit 0
   fi
+  now=$(git ls-remote origin "refs/heads/$line" | cut -f1)
+  [ "$now" = "$head" ] || die "origin/$line moved from $head to $now during the checks; run --tag again"
   say "tagging $newtag on origin/$line ($head)"
   git tag -s -a -m "$newtag" "$newtag" "$head"
   git push origin "refs/tags/$newtag"
@@ -136,12 +143,18 @@ fi
 wt=$(mktemp -d "${TMPDIR:-/tmp}/xion-sync.XXXXXX")
 rmdir "$wt"
 branch="sync/$utag"
+pushed=0
 cleanup() {
-  if [ "$keep" = 1 ]; then echo "worktree kept at $wt"; return; fi
+  if [ "$keep" = 1 ]; then echo "worktree and branch kept at $wt"; return; fi
   git -C "$repo" worktree remove --force "$wt" 2>/dev/null || true
+  # An unpushed sync branch would block the next run (worktree add -b).
+  if [ "$dry" = 0 ] && [ "$pushed" = 0 ]; then git -C "$repo" branch -q -D "$branch" 2>/dev/null || true; fi
 }
 # A dry run works on a detached HEAD so it leaves no branch behind.
 add_worktree() { # <start-point>
+  if [ "$dry" = 0 ] && git rev-parse -q --verify "refs/heads/$branch" >/dev/null; then
+    die "branch $branch already exists locally (an earlier run kept it); finish or delete it first"
+  fi
   if [ "$dry" = 1 ]; then git worktree add -q --detach "$wt" "$1"; else git worktree add -q -b "$branch" "$wt" "$1"; fi
   trap cleanup EXIT
 }
@@ -193,13 +206,14 @@ else
       git cherry-pick --skip
       picked+=("$c:skipped")
     else
+      say "conflicts in $(git log -1 --format='%h' "$c") were resolved from rerere's recorded resolutions; review its range-diff below"
       git commit -S --no-edit
       picked+=("$c:$(git rev-parse HEAD)")
     fi
   done
   # range-diff takes plain ranges, and the stack is not one, so compare each
   # picked commit with its source by patch-id ("=" same patch, "!" changed).
-  say "stack check against $src (= unchanged, ! changed: inspect with git range-diff <old>^! <new>^!)"
+  say "stack check against $src (= unchanged, ! changed, - already upstream)"
   for pair in "${picked[@]}"; do
     c=${pair%%:*} new_c=${pair#*:}
     if [ "$new_c" = skipped ]; then mark='-'; else
@@ -209,6 +223,24 @@ else
     fi
     printf '%s %.8s -> %.8s %s\n' "$mark" "$c" "$new_c" "$(git log -1 --format=%s "$c")"
   done
+  for pair in "${picked[@]}"; do
+    c=${pair%%:*} new_c=${pair#*:}
+    [ "$new_c" = skipped ] && continue
+    if [ "$(git show "$c" | git patch-id --stable | cut -d' ' -f1)" != "$(git show "$new_c" | git patch-id --stable | cut -d' ' -f1)" ]; then
+      say "range-diff for changed patch $(git log -1 --format='%h %s' "$c")"
+      git --no-pager range-diff --no-color "$c^!" "$new_c^!"
+    fi
+  done
+  # Merge commits are not replayed. A merge may only resolve conflicts in
+  # favour of upstream or of an existing patch (AGENTS.md); list the ones
+  # with hand resolutions so nothing fork-specific hides in them.
+  resolved=$(for m in $(git rev-list --merges "$src" "${excludes[@]}"); do
+    [ -n "$(git diff-tree --cc --no-commit-id -p "$m" | head -1)" ] && git log -1 --format='  %h %s' "$m"
+  done)
+  if [ -n "$resolved" ]; then
+    say "merge commits with conflict resolutions on $src (not replayed; check with git show --remerge-diff <sha> that each only resolves toward upstream or an existing patch):"
+    echo "$resolved"
+  fi
 fi
 
 say "our commits on top of $utag:"
@@ -221,6 +253,7 @@ if [ "$dry" = 1 ]; then
 fi
 
 git push -u origin "HEAD:refs/heads/$branch"
+pushed=1
 if ! git rev-parse -q --verify "refs/remotes/origin/$line" >/dev/null; then
   say "new line: create $line at $utag, then review the stack as a PR into it"
   echo "  git push origin $utag_commit:refs/heads/$line"

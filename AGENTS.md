@@ -32,11 +32,15 @@ pushes nothing.
 - **Same line** (for example v0.70.5 → v0.70.6): the script branches from
   `xion/v0.70.x`, merges the upstream tag with a signed merge commit, builds,
   runs the x/wasm tests and pushes `sync/<tag>`. Fix conflicts or the stack
-  in further commits on that branch, never by rewriting it.
+  in further commits on that branch, never by rewriting it. A merge commit
+  may only resolve conflicts toward upstream or toward an existing patch;
+  any new fork change goes in its own commit after the merge, because a new
+  line replays commits, not merge resolutions.
 - **New line** (for example v0.71.0): the script starts from the upstream tag,
   cherry-picks the previous line's stack (`--from-line`, default
-  `origin/xion/main`) and prints `git range-diff` so you can see how each
-  patch changed. Update `FORK.md` for patches that changed or were dropped.
+  `origin/xion/main`), marks each patch unchanged or changed, prints
+  `git range-diff` for the changed ones, and lists merge commits with
+  conflict resolutions to check. Update `FORK.md` for patches that changed or were dropped.
 - **Land the PR with a merge commit.** Never squash or rebase a sync PR: a
   squash drops the upstream tag from the line's history and the next merge
   replays upstream's commits and conflicts. The PR goes to the line branch,
@@ -49,7 +53,10 @@ pushes nothing.
 - Cut a tag only on a line branch's head, with
   `scripts/xion-sync --tag <upstream-tag>`. It checks that the upstream tag
   is in the line, builds and tests, picks the next free `-xion.N`, signs and
-  annotates the tag, pushes it and waits for proxy.golang.org to resolve it.
+  annotates the tag, pushes it and waits for proxy.golang.org to resolve it
+  to the tagged commit. It refuses an upstream tag older than the newest one
+  in the line, re-checks the line head before tagging, and does not allow
+  `--skip-tests` outside `--dry-run`.
   Nothing may pin a tag before the proxy resolves it.
 - Never tag a commit that sits only on a work branch, `main`, or an
   integration branch.

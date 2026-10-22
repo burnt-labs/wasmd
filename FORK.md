@@ -70,8 +70,8 @@ sum database pin them.
 | v0.61.8-xion.2 | `a3464e53` | v28.1.0 | `e0c84c3c` on `xion/v0.61.x` | v0.61.8 |
 | v0.61.10-xion.1 | `747fa521` | v29.0.0-v30.0.0 | `18a7a689` on `xion/v0.61.x` | v0.61.10 |
 | v0.61.15-rc-xion.1 | `a186f1a7` | v31.0.0 | `5d1d15bb` on `xion/v0.61.x` | v0.61.14 (the tag predates upstream v0.61.15) |
-| v0.61.15-xion.2 | `74aa8875` | v31.0.1, v31.0.2 | `401f73e1` on `xion/v0.61.x` (head) | v0.61.15 |
-| v0.70.5-xion.4 | `80464e7b` | v32 | `6ce91b14` on `xion/v0.70.x` (head) | v0.70.5 |
+| v0.61.15-xion.2 | `74aa8875` | v31.0.1, v31.0.2 | `401f73e1` on `xion/v0.61.x` | v0.61.15 |
+| v0.70.5-xion.4 | `80464e7b` | v32 | `6ce91b14` on `xion/v0.70.x` | v0.70.5 |
 
 Notes:
 
