@@ -386,7 +386,7 @@ func (p StoreAndInstantiateContractProposal) String() string {
   Builder:     %s
   Code Hash:   %X
   Instantiate permission: %s
-  Unpin code:  %t  
+  Unpin code:  %t
   Admin:       %s
   Label:       %s
   Msg:         %q

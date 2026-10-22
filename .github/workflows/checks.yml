@@ -63,9 +63,9 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.11.4
+          version: v2.11.3
           args: --tests=false --timeout=5m0s
 
   test-cover:
@@ -104,7 +104,7 @@ jobs:
           SHARD_INDEX=$(( ${{ matrix.shard }} - 1 ))
           for pkg in $(go list ./... | grep -v '/simulation' | awk "NR % 4 == $SHARD_INDEX"); do
             id=$(echo "$pkg" | sed 's|[/.]|_|g')
-            if ! go test -mod=readonly -timeout 8m -race -coverprofile=profiles/$id.out -covermode=atomic -ldflags=-checklinkname=0 -tags='ledger test_ledger_mock' "$pkg" 2>&1 | tee logs/$id.log; then
+            if ! go test -mod=readonly -timeout 8m -race -coverprofile=profiles/$id.out -covermode=atomic -tags='ledger test_ledger_mock' "$pkg" 2>&1 | tee logs/$id.log; then
               FAILED=1
             fi
           done

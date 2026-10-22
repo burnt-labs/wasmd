@@ -14,18 +14,18 @@ import (
 
 	wasmvm "github.com/CosmWasm/wasmvm/v3"
 	wasmvmtypes "github.com/CosmWasm/wasmvm/v3/types"
-	channeltypes "github.com/cosmos/ibc-go/v10/modules/core/04-channel/types"
+	channeltypes "github.com/cosmos/ibc-go/v11/modules/core/04-channel/types"
 
 	"cosmossdk.io/collections"
 	corestoretypes "cosmossdk.io/core/store"
 	errorsmod "cosmossdk.io/errors"
-	"cosmossdk.io/log"
+	"cosmossdk.io/log/v2"
 	sdkmath "cosmossdk.io/math"
-	"cosmossdk.io/store/prefix"
-	storetypes "cosmossdk.io/store/types"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/runtime"
+	"github.com/cosmos/cosmos-sdk/store/v2/prefix"
+	storetypes "github.com/cosmos/cosmos-sdk/store/v2/types"
 	"github.com/cosmos/cosmos-sdk/telemetry"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
@@ -270,7 +270,7 @@ func (k Keeper) instantiate(
 	addressGenerator AddressGenerator,
 	authPolicy types.AuthorizationPolicy,
 ) (sdk.AccAddress, []byte, error) {
-	defer telemetry.MeasureSince(time.Now(), "wasm", "contract", "instantiate")
+	defer telemetry.MeasureSince(time.Now(), "wasm", "contract", "instantiate") // nolint:staticcheck // TODO update to OTEL
 
 	if creator == nil {
 		return nil, nil, types.ErrEmpty.Wrap("creator")
@@ -364,9 +364,6 @@ func (k Keeper) instantiate(
 		return nil, nil, types.MarkErrorDeterministic(errorsmod.Wrap(types.ErrInstantiateFailed, res.Err))
 	}
 	if res.Ok == nil {
-		// A ContractResult always sets exactly one of ok/error. Neither set is
-		// malformed contract or wasmvm output; guard the deref so it cannot
-		// nil-panic the node (a panic here halts any non-recovered caller).
 		return nil, nil, errorsmod.Wrap(types.ErrVMError, "internal wasmvm error: nil ok response")
 	}
 
@@ -421,7 +418,7 @@ func (k Keeper) instantiate(
 
 // Execute executes the contract instance
 func (k Keeper) execute(ctx context.Context, contractAddress, caller sdk.AccAddress, msg []byte, coins sdk.Coins) ([]byte, error) {
-	defer telemetry.MeasureSince(time.Now(), "wasm", "contract", "execute")
+	defer telemetry.MeasureSince(time.Now(), "wasm", "contract", "execute") // nolint:staticcheck // TODO update to OTEL
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
 	contractInfo, codeInfo, prefixStore, err := k.contractInstance(ctx, contractAddress)
 	if err != nil {
@@ -458,6 +455,9 @@ func (k Keeper) execute(ctx context.Context, contractAddress, caller sdk.AccAddr
 	if res.Err != "" {
 		return nil, types.MarkErrorDeterministic(errorsmod.Wrap(types.ErrExecuteFailed, res.Err))
 	}
+	if res.Ok == nil {
+		return nil, errorsmod.Wrap(types.ErrVMError, "internal wasmvm error: nil ok response")
+	}
 
 	if res.Ok == nil {
 		// A ContractResult always sets exactly one of ok/error. Neither set is
@@ -487,7 +487,7 @@ func (k Keeper) migrate(
 	msg []byte,
 	authZ types.AuthorizationPolicy,
 ) ([]byte, error) {
-	defer telemetry.MeasureSince(time.Now(), "wasm", "contract", "migrate")
+	defer telemetry.MeasureSince(time.Now(), "wasm", "contract", "migrate") // nolint:staticcheck // TODO update to OTEL
 
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
 
@@ -649,7 +649,7 @@ func (k Keeper) callMigrateEntrypoint(
 // The policy will be read in msgServer.selectAuthorizationPolicy and used for sub-message executions.
 // This is an extension point for some very advanced scenarios only. Use with care!
 func (k Keeper) Sudo(ctx context.Context, contractAddress sdk.AccAddress, msg []byte) ([]byte, error) {
-	defer telemetry.MeasureSince(time.Now(), "wasm", "contract", "sudo")
+	defer telemetry.MeasureSince(time.Now(), "wasm", "contract", "sudo") // nolint:staticcheck // TODO update to OTEL
 
 	contractInfo, codeInfo, prefixStore, err := k.contractInstance(ctx, contractAddress)
 	if err != nil {
@@ -677,6 +677,9 @@ func (k Keeper) Sudo(ctx context.Context, contractAddress sdk.AccAddress, msg []
 	}
 	if res.Err != "" {
 		return nil, types.MarkErrorDeterministic(errorsmod.Wrap(types.ErrExecuteFailed, res.Err))
+	}
+	if res.Ok == nil {
+		return nil, errorsmod.Wrap(types.ErrVMError, "internal wasmvm error: nil ok response")
 	}
 
 	if res.Ok == nil {
@@ -727,6 +730,9 @@ func (k Keeper) reply(ctx sdk.Context, contractAddress sdk.AccAddress, reply was
 	}
 	if res.Err != "" {
 		return nil, types.MarkErrorDeterministic(errorsmod.Wrap(types.ErrExecuteFailed, res.Err))
+	}
+	if res.Ok == nil {
+		return nil, errorsmod.Wrap(types.ErrVMError, "internal wasmvm error: nil ok response")
 	}
 
 	if res.Ok == nil {
@@ -894,7 +900,7 @@ func (k Keeper) mustGetLastContractHistoryEntry(ctx context.Context, contractAdd
 
 // QuerySmart queries the smart contract itself.
 func (k Keeper) QuerySmart(ctx context.Context, contractAddr sdk.AccAddress, req []byte) ([]byte, error) {
-	defer telemetry.MeasureSince(time.Now(), "wasm", "contract", "query-smart")
+	defer telemetry.MeasureSince(time.Now(), "wasm", "contract", "query-smart") // nolint:staticcheck // TODO update to OTEL
 
 	// checks and increase query stack size
 	sdkCtx, err := checkAndIncreaseQueryStackSize(sdk.UnwrapSDKContext(ctx), k.maxQueryStackSize)
@@ -964,7 +970,7 @@ func checkAndIncreaseCallDepth(ctx context.Context, maxCallDepth uint32) (sdk.Co
 
 // QueryRaw returns the contract's state for give key. Returns `nil` when key is `nil`.
 func (k Keeper) QueryRaw(ctx context.Context, contractAddress sdk.AccAddress, key []byte) []byte {
-	defer telemetry.MeasureSince(time.Now(), "wasm", "contract", "query-raw")
+	defer telemetry.MeasureSince(time.Now(), "wasm", "contract", "query-raw") // nolint:staticcheck // TODO update to OTEL
 	if key == nil {
 		return nil
 	}
@@ -974,7 +980,7 @@ func (k Keeper) QueryRaw(ctx context.Context, contractAddress sdk.AccAddress, ke
 }
 
 func (k Keeper) QueryRawRange(ctx context.Context, contractAddress sdk.AccAddress, start, end []byte, limit uint16, reverse bool) (results []wasmvmtypes.RawRangeEntry, nextKey []byte) {
-	defer telemetry.MeasureSince(time.Now(), "wasm", "contract", "query-raw-range")
+	defer telemetry.MeasureSince(time.Now(), "wasm", "contract", "query-raw-range") // nolint:staticcheck // TODO update to OTEL
 
 	prefixStoreKey := types.GetContractStorePrefix(contractAddress)
 	prefixStore := prefix.NewStore(runtime.KVStoreAdapter(k.storeService.OpenKVStore(ctx)), prefixStoreKey)

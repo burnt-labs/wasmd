@@ -6,12 +6,11 @@ import (
 	"time"
 
 	wasmvmtypes "github.com/CosmWasm/wasmvm/v3/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	ibctransfertypes "github.com/cosmos/ibc-go/v10/modules/apps/transfer/types"
-	channeltypes "github.com/cosmos/ibc-go/v10/modules/core/04-channel/types"
-	channeltypesv2 "github.com/cosmos/ibc-go/v10/modules/core/04-channel/v2/types"
-	ibctesting "github.com/cosmos/ibc-go/v10/testing"
-	mockv2 "github.com/cosmos/ibc-go/v10/testing/mock/v2"
+	ibctransfertypes "github.com/cosmos/ibc-go/v11/modules/apps/transfer/types"
+	channeltypes "github.com/cosmos/ibc-go/v11/modules/core/04-channel/types"
+	channeltypesv2 "github.com/cosmos/ibc-go/v11/modules/core/04-channel/v2/types"
+	ibctesting "github.com/cosmos/ibc-go/v11/testing"
+	mockv2 "github.com/cosmos/ibc-go/v11/testing/mock/v2"
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
@@ -79,7 +78,7 @@ func setup(t *testing.T) TestEnv {
 		Order:   channeltypes.UNORDERED,
 	}
 
-	path.Path.SetupV2()
+	path.SetupV2()
 
 	return TestEnv{
 		contractPortA: contractPortA,

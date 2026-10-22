@@ -2,19 +2,41 @@
 
 ## [Unreleased](https://github.com/CosmWasm/wasmd/tree/HEAD)
 
-[Full Changelog](https://github.com/CosmWasm/wasmd/compare/v0.61.15...HEAD)
+[Full Changelog](https://github.com/CosmWasm/wasmd/compare/v0.70.5...HEAD)
 
-## [v0.61.15](https://github.com/CosmWasm/wasmd/tree/v0.61.15) (2026-09-28)
+## [v0.70.5](https://github.com/CosmWasm/wasmd/tree/v0.70.5) (2026-10-09)
 
-[Full Changelog](https://github.com/CosmWasm/wasmd/compare/v0.61.14...v0.61.15)
+[Full Changelog](https://github.com/CosmWasm/wasmd/compare/v0.70.4...v0.70.5)
+
+- Bump wasmvm to [v3.0.9](https://github.com/CosmWasm/wasmvm/releases/tag/v3.0.9)
+
+## [v0.70.4](https://github.com/CosmWasm/wasmd/tree/v0.70.4) (2026-09-28)
+
+[Full Changelog](https://github.com/CosmWasm/wasmd/compare/v0.70.3...v0.70.4)
 
 - Bump wasmvm to [v3.0.8](https://github.com/CosmWasm/wasmvm/releases/tag/v3.0.8)
 
-## [v0.61.13](https://github.com/CosmWasm/wasmd/tree/v0.61.13) (2026-05-22)
+## [v0.70.2](https://github.com/CosmWasm/wasmd/tree/v0.70.2) (2026-05-22)
 
-[Full Changelog](https://github.com/CosmWasm/wasmd/compare/v0.61.12...v0.61.13)
+[Full Changelog](https://github.com/CosmWasm/wasmd/compare/v0.70.1...v0.70.2)
 
 - Bump wasmvm to [v3.0.6](https://github.com/CosmWasm/wasmvm/releases/tag/v3.0.6)
+
+## [v0.70.1](https://github.com/CosmWasm/wasmd/tree/v0.70.1) (2026-05-13)
+
+[Full Changelog](https://github.com/CosmWasm/wasmd/compare/v0.70.0...v0.70.1)
+
+- Bump wasmvm to [v3.0.5](https://github.com/CosmWasm/wasmvm/releases/tag/v3.0.5)
+
+## [v0.70.0](https://github.com/CosmWasm/wasmd/tree/v0.70.0) (2026-04-24)
+
+[Full Changelog](https://github.com/CosmWasm/wasmd/compare/v0.61.11...v0.70.0)
+
+- Bump cosmos-sdk to [v0.54.0](https://github.com/cosmos/cosmos-sdk/releases/tag/v0.54.0)
+- Bump ibc-go to [v11.0.0](https://github.com/cosmos/ibc-go/releases/tag/v11.0.0)
+- Bump wasmvm to [v3.0.4](https://github.com/CosmWasm/wasmvm/releases/tag/v3.0.4)
+- Fix IBC v2 async acknowledgements [\#2480](https://github.com/CosmWasm/wasmd/pull/2480)
+- Fix IBC v2 packet send [\#2478](https://github.com/CosmWasm/wasmd/pull/2478)
 
 ## [v0.61.12](https://github.com/CosmWasm/wasmd/tree/v0.61.12) (2026-05-13)
 

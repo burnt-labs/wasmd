@@ -5,7 +5,8 @@ import (
 	"fmt"
 
 	wasmvmtypes "github.com/CosmWasm/wasmvm/v3/types"
-	channeltypesv2 "github.com/cosmos/ibc-go/v10/modules/core/04-channel/v2/types"
+	channeltypesv2 "github.com/cosmos/ibc-go/v11/modules/core/04-channel/v2/types"
+	porttypes "github.com/cosmos/ibc-go/v11/modules/core/05-port/types"
 
 	errorsmod "cosmossdk.io/errors"
 
@@ -40,7 +41,7 @@ type SDKMessageHandler struct {
 func NewDefaultMessageHandler(
 	keeper *Keeper,
 	router MessageRouter,
-	ics4Wrapper types.ICS4Wrapper,
+	ics4Wrapper porttypes.ICS4Wrapper,
 	channelKeeperV2 types.ChannelKeeperV2,
 	bankKeeper types.Burner,
 	cdc codec.Codec,
@@ -160,12 +161,12 @@ func (m MessageHandlerChain) DispatchMsg(ctx sdk.Context, contractAddr sdk.AccAd
 
 // IBCRawPacketHandler handles IBC.SendPacket messages which are published to an IBC channel.
 type IBCRawPacketHandler struct {
-	ics4Wrapper types.ICS4Wrapper
+	ics4Wrapper porttypes.ICS4Wrapper
 	wasmKeeper  types.IBCContractKeeper
 }
 
 // NewIBCRawPacketHandler constructor
-func NewIBCRawPacketHandler(ics4Wrapper types.ICS4Wrapper, wasmKeeper types.IBCContractKeeper) IBCRawPacketHandler {
+func NewIBCRawPacketHandler(ics4Wrapper porttypes.ICS4Wrapper, wasmKeeper types.IBCContractKeeper) IBCRawPacketHandler {
 	return IBCRawPacketHandler{
 		ics4Wrapper: ics4Wrapper,
 		wasmKeeper:  wasmKeeper,
