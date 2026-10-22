@@ -8,6 +8,10 @@ This is a fork of [CosmWasm/wasmd](https://github.com/CosmWasm/wasmd), a Cosmos 
 
 **Go 1.24+ required.** Module path: `github.com/CosmWasm/wasmd`
 
+## Branch and release tags
+
+Before you change `xion/main` or create a `vX.Y.Z-xion.N` tag, read `AGENTS.md`. At every xion tag, `xion/main` is the upstream tag plus at most one fork commit. A pushed tag is never moved or deleted.
+
 ## Build & Test Commands
 
 ```bash
