@@ -1,0 +1,197 @@
+#!/usr/bin/env bash
+# xion-sync: bring an upstream CosmWasm/wasmd tag onto its xion line branch,
+# build and test it, and (after the PR has landed) cut the xion tag.
+#
+#   scripts/xion-sync [--dry-run] [--keep] [--base <ref>] [--from-line <ref>] <upstream-tag>
+#   scripts/xion-sync --tag [--skip-tests] <upstream-tag>
+#
+# Prepare mode (default) works in a throwaway worktree:
+#   - same line (xion/vX.Y.x exists): branch from it and merge the upstream tag
+#     with a signed merge commit;
+#   - new line (xion/vX.Y.x missing): branch from the upstream tag and
+#     cherry-pick the patch stack of --from-line (default: origin/xion/main),
+#     then print `git range-diff` against that stack;
+#   - go build ./... and the x/wasm tests;
+#   - without --dry-run, push sync/<upstream-tag> and print the PR command.
+#     Land that PR with a merge commit, never squash or rebase (see AGENTS.md).
+#
+# Tag mode cuts vX.Y.Z-xion.N on the head of origin/xion/vX.Y.x, signed and
+# annotated, after checking the upstream tag is an ancestor and the build and
+# tests pass, then waits for proxy.golang.org to resolve it. N is the next
+# number not used by any tag on origin or any version the Go proxy has seen.
+#
+# git rerere is enabled for the repository so conflict resolutions are reused.
+set -euo pipefail
+
+UPSTREAM_URL=https://github.com/CosmWasm/wasmd.git
+MODULE=github.com/burnt-labs/wasmd
+TEST_TAGS='ledger test_ledger_mock'
+
+mode=prepare dry=0 keep=0 skip_tests=0 base='' from_line=''
+die() { echo "xion-sync: $*" >&2; exit 1; }
+say() { echo "==> $*"; }
+usage() { sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry-run) dry=1 ;;
+    --keep) keep=1 ;;
+    --tag) mode=tag ;;
+    --skip-tests) skip_tests=1 ;;
+    --base) base=${2:?}; shift ;;
+    --from-line) from_line=${2:?}; shift ;;
+    -h|--help) usage 0 ;;
+    -*) die "unknown option $1" ;;
+    *) [ -z "${utag:-}" ] || die "one upstream tag only"; utag=$1 ;;
+  esac
+  shift
+done
+[ -n "${utag:-}" ] || usage 1
+[[ $utag =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || die "expected an upstream tag like v0.70.5, got $utag"
+line="xion/v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.x"
+
+repo=$(git rev-parse --show-toplevel)
+cd "$repo"
+git config rerere.enabled true
+git config rerere.autoupdate true
+
+say "fetching origin and the upstream tag $utag"
+git fetch -q origin '+refs/heads/*:refs/remotes/origin/*' --tags
+git fetch -q "$UPSTREAM_URL" "+refs/tags/$utag:refs/tags/$utag" --no-tags
+utag_commit=$(git rev-parse "$utag^{commit}")
+
+is_upstream_tag() { [[ $1 =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; }
+
+# The upstream tag a line branch was started from: walk its first-parent
+# history and stop at the first commit that carries an upstream tag. Upstream
+# tags merged in later sit on second parents, so they are never on this path.
+line_base_tag() {
+  local head=$1 c t
+  for c in $(git rev-list --first-parent "$head"); do
+    for t in $(git tag --points-at "$c"); do
+      if is_upstream_tag "$t"; then echo "$t"; return; fi
+    done
+  done
+  die "no upstream tag found on the first-parent history of $head"
+}
+
+build_and_test() {
+  say "go build ./..."
+  go build ./...
+  if [ "$skip_tests" = 1 ]; then say "skipping tests (--skip-tests)"; return; fi
+  say "go test ./x/wasm/... (tags: $TEST_TAGS)"
+  go test -mod=readonly -count=1 -tags="$TEST_TAGS" ./x/wasm/...
+}
+
+next_tag() {
+  local prefix="$utag-xion." n max=0
+  for n in $(git ls-remote --tags origin "refs/tags/$prefix*" | sed -n "s|.*refs/tags/$prefix\([0-9]*\)\$|\1|p") \
+           $(curl -fsS "https://proxy.golang.org/$MODULE/@v/list" 2>/dev/null | sed -n "s|^$prefix\([0-9]*\)\$|\1|p"); do
+    [ "$n" -gt "$max" ] && max=$n
+  done
+  echo "$prefix$((max + 1))"
+}
+
+if [ "$mode" = tag ]; then
+  git rev-parse -q --verify "refs/remotes/origin/$line" >/dev/null || die "origin has no $line"
+  head=$(git rev-parse "origin/$line")
+  git merge-base --is-ancestor "$utag_commit" "$head" || die "$utag is not in origin/$line yet; land the sync PR first"
+  newtag=$(next_tag)
+  wt=$(mktemp -d "${TMPDIR:-/tmp}/xion-sync-tag.XXXXXX")
+  git worktree add -q --detach "$wt" "$head"
+  trap 'git worktree remove --force "$wt"' EXIT
+  (cd "$wt" && build_and_test)
+  say "tagging $newtag on origin/$line ($head)"
+  git tag -s -a -m "$newtag" "$newtag" "$head"
+  git push origin "refs/tags/$newtag"
+  say "waiting for proxy.golang.org to resolve $newtag"
+  for _ in $(seq 1 30); do
+    if info=$(curl -fsS "https://proxy.golang.org/$MODULE/@v/$newtag.info" 2>/dev/null); then
+      echo "$info"; say "done: $newtag"; exit 0
+    fi
+    sleep 10
+  done
+  die "pushed $newtag, but the proxy did not resolve it within 5 minutes; check again before anything pins it"
+fi
+
+# prepare mode
+wt=$(mktemp -d "${TMPDIR:-/tmp}/xion-sync.XXXXXX")
+rmdir "$wt"
+branch="sync/$utag"
+cleanup() {
+  if [ "$keep" = 1 ]; then echo "worktree kept at $wt"; return; fi
+  git -C "$repo" worktree remove --force "$wt" 2>/dev/null || true
+}
+# A dry run works on a detached HEAD so it leaves no branch behind.
+add_worktree() { # <start-point>
+  if [ "$dry" = 1 ]; then git worktree add -q --detach "$wt" "$1"; else git worktree add -q -b "$branch" "$wt" "$1"; fi
+  trap cleanup EXIT
+}
+
+if [ -z "$base" ] && git rev-parse -q --verify "refs/remotes/origin/$line" >/dev/null; then
+  base="origin/$line"
+fi
+
+if [ -n "$base" ]; then
+  say "same line: merging $utag into $base"
+  add_worktree "$base"
+  cd "$wt"
+  if git merge-base --is-ancestor "$utag_commit" HEAD; then
+    say "$base already contains $utag; nothing to merge"
+  elif ! git merge -S --no-ff -m "Merge upstream CosmWasm/wasmd $utag into $line" "$utag"; then
+    git rerere status
+    if [ -n "$(git diff --name-only --diff-filter=U)" ]; then
+      echo "Conflicts left. Resolve them in $wt, then: git add -A && git commit -S --no-edit" >&2
+      keep=1
+      exit 2
+    fi
+    git commit -S --no-edit
+  fi
+else
+  src=${from_line:-origin/xion/main}
+  src_base=$(line_base_tag "$src")
+  say "new line $line: $utag + the patch stack of $src (stack = $src_base..$src, merges skipped)"
+  add_worktree "$utag_commit"
+  cd "$wt"
+  stack=$(git rev-list --reverse --no-merges "$src_base..$src")
+  for c in $stack; do
+    if ! git cherry-pick -S -x "$c"; then
+      if [ -n "$(git diff --name-only --diff-filter=U)" ]; then
+        echo "Conflict on $(git log -1 --format='%h %s' "$c"). Resolve in $wt, then: git add -A && git cherry-pick --continue, and re-run the rest by hand." >&2
+        keep=1
+        exit 2
+      fi
+      git commit -S --no-edit
+    fi
+  done
+  say "range-diff of the stack ($src_base..$src vs $utag..HEAD)"
+  git --no-pager range-diff --no-color "$src_base..$src" "$utag..HEAD" || true
+fi
+
+say "our commits on top of $utag:"
+git --no-pager log --oneline --no-merges "$utag..HEAD" | cat
+build_and_test
+
+if [ "$dry" = 1 ]; then
+  say "dry run: nothing pushed or tagged. After the PR lands, the tag would be $(cd "$repo" && next_tag)"
+  exit 0
+fi
+
+git push -u origin "HEAD:refs/heads/$branch"
+if ! git rev-parse -q --verify "refs/remotes/origin/$line" >/dev/null; then
+  say "new line: create $line at $utag, then review the stack as a PR into it"
+  echo "  git push origin $utag_commit:refs/heads/$line"
+  echo "  gh pr create --base $line --head $branch --title \"Start $line: upstream $utag + the xion patch stack\""
+  echo "Land it with a merge commit (never squash or rebase), then: scripts/xion-sync --tag $utag"
+  echo "Moving xion/main to a new line is not a fast-forward; see AGENTS.md (needs twiceburnt's go)."
+elif [ "$(git rev-parse "origin/$line")" = "$(git rev-parse origin/xion/main)" ]; then
+  say "$line is the current line: the PR goes to xion/main"
+  echo "  gh pr create --base xion/main --head $branch --title \"Sync upstream $utag into $line\""
+  echo "Land it with a merge commit (never squash or rebase), then fast-forward the line and tag:"
+  echo "  git fetch origin && git push origin origin/xion/main:refs/heads/$line"
+  echo "  scripts/xion-sync --tag $utag"
+else
+  say "$line is an older line: the PR goes to $line"
+  echo "  gh pr create --base $line --head $branch --title \"Sync upstream $utag into $line\""
+  echo "Land it with a merge commit (never squash or rebase), then: scripts/xion-sync --tag $utag"
+fi
