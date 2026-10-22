@@ -129,9 +129,12 @@ if [ "$mode" = tag ]; then
   for _ in $(seq 1 30); do
     if info=$(curl -fsS "https://proxy.golang.org/$MODULE/@v/$newtag.info" 2>/dev/null); then
       echo "$info"
+      # proxy.golang.org adds Origin.Hash to .info; the GOPROXY protocol only
+      # promises Version and Time, so a missing Hash is not a failure.
       case "$info" in
         *"\"Hash\":\"$head\""*) say "done: $newtag resolves to $head"; exit 0 ;;
-        *) die "the proxy resolves $newtag to a different commit than $head; do not pin it" ;;
+        *'"Hash":'*) die "the proxy resolves $newtag to a different commit than $head; do not pin it" ;;
+        *) say "done: the proxy serves $newtag (it reports no commit hash to compare)"; exit 0 ;;
       esac
     fi
     sleep 10
@@ -233,9 +236,10 @@ else
   done
   # Merge commits are not replayed. A merge may only resolve conflicts in
   # favour of upstream or of an existing patch (AGENTS.md); list the ones
-  # with hand resolutions so nothing fork-specific hides in them.
+  # whose recorded result differs from git's automatic merge (conflict
+  # resolutions or hand edits) so nothing fork-specific hides in them.
   resolved=$(for m in $(git rev-list --merges "$src" "${excludes[@]}"); do
-    [ -n "$(git diff-tree --cc --no-commit-id -p "$m" | head -1)" ] && git log -1 --format='  %h %s' "$m"
+    if [ -n "$(git show --remerge-diff --format= "$m" | head -1)" ]; then git log -1 --format='  %h %s' "$m"; fi
   done)
   if [ -n "$resolved" ]; then
     say "merge commits with conflict resolutions on $src (not replayed; check with git show --remerge-diff <sha> that each only resolves toward upstream or an existing patch):"
