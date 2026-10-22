@@ -2,15 +2,16 @@
 # xion-sync: bring an upstream CosmWasm/wasmd tag onto its xion line branch,
 # build and test it, and (after the PR has landed) cut the xion tag.
 #
-#   scripts/xion-sync [--dry-run] [--keep] [--base <ref>] [--from-line <ref>] <upstream-tag>
-#   scripts/xion-sync --tag [--skip-tests] <upstream-tag>
+#   scripts/xion-sync [--dry-run] [--keep] [--skip-tests] [--base <ref>] [--new-line] [--from-line <ref>] <upstream-tag>
+#   scripts/xion-sync --tag [--dry-run] [--skip-tests] <upstream-tag>
 #
 # Prepare mode (default) works in a throwaway worktree:
 #   - same line (xion/vX.Y.x exists): branch from it and merge the upstream tag
 #     with a signed merge commit;
 #   - new line (xion/vX.Y.x missing): branch from the upstream tag and
 #     cherry-pick the patch stack of --from-line (default: origin/xion/main),
-#     then print `git range-diff` against that stack;
+#     then check each picked patch against its source by patch-id
+#     (--new-line takes this path even when the line branch exists);
 #   - go build ./... and the x/wasm tests;
 #   - without --dry-run, push sync/<upstream-tag> and print the PR command.
 #     Land that PR with a merge commit, never squash or rebase (see AGENTS.md).
@@ -27,7 +28,7 @@ UPSTREAM_URL=https://github.com/CosmWasm/wasmd.git
 MODULE=github.com/burnt-labs/wasmd
 TEST_TAGS='ledger test_ledger_mock'
 
-mode=prepare dry=0 keep=0 skip_tests=0 base='' from_line=''
+mode=prepare dry=0 keep=0 skip_tests=0 base='' from_line='' new_line=0
 die() { echo "xion-sync: $*" >&2; exit 1; }
 say() { echo "==> $*"; }
 usage() { sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
@@ -40,6 +41,7 @@ while [ $# -gt 0 ]; do
     --skip-tests) skip_tests=1 ;;
     --base) base=${2:?}; shift ;;
     --from-line) from_line=${2:?}; shift ;;
+    --new-line) new_line=1 ;;
     -h|--help) usage 0 ;;
     -*) die "unknown option $1" ;;
     *) [ -z "${utag:-}" ] || die "one upstream tag only"; utag=$1 ;;
@@ -55,9 +57,12 @@ cd "$repo"
 git config rerere.enabled true
 git config rerere.autoupdate true
 
-say "fetching origin and the upstream tag $utag"
+say "fetching origin and the upstream release tags"
 git fetch -q origin '+refs/heads/*:refs/remotes/origin/*' --tags
-git fetch -q "$UPSTREAM_URL" "+refs/tags/$utag:refs/tags/$utag" --no-tags
+# All upstream release tags: the line base and the patch stack are found by
+# excluding upstream history, which needs every upstream tag locally.
+git fetch -q "$UPSTREAM_URL" '+refs/tags/v*:refs/tags/v*' --no-tags
+git rev-parse -q --verify "refs/tags/$utag" >/dev/null || die "upstream has no tag $utag"
 utag_commit=$(git rev-parse "$utag^{commit}")
 
 is_upstream_tag() { [[ $1 =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; }
@@ -83,10 +88,15 @@ build_and_test() {
   go test -mod=readonly -count=1 -tags="$TEST_TAGS" ./x/wasm/...
 }
 
+# Next free -xion.N for $utag. Both lookups must succeed: a name that is gone
+# from GitHub but cached by the Go proxy can never be reused, so a failed
+# lookup stops the script instead of guessing.
 next_tag() {
-  local prefix="$utag-xion." n max=0
-  for n in $(git ls-remote --tags origin "refs/tags/$prefix*" | sed -n "s|.*refs/tags/$prefix\([0-9]*\)\$|\1|p") \
-           $(curl -fsS "https://proxy.golang.org/$MODULE/@v/list" 2>/dev/null | sed -n "s|^$prefix\([0-9]*\)\$|\1|p"); do
+  local prefix="$utag-xion." n max=0 remote proxy
+  remote=$(git ls-remote --tags origin "refs/tags/$prefix*") || die "could not list tags on origin"
+  proxy=$(curl -fsS "https://proxy.golang.org/$MODULE/@v/list") || die "could not read the Go proxy version list"
+  for n in $(printf '%s\n' "$remote" | sed -n "s|.*refs/tags/$prefix\([0-9]*\)\$|\1|p") \
+           $(printf '%s\n' "$proxy" | sed -n "s|^$prefix\([0-9]*\)\$|\1|p"); do
     [ "$n" -gt "$max" ] && max=$n
   done
   echo "$prefix$((max + 1))"
@@ -101,13 +111,21 @@ if [ "$mode" = tag ]; then
   git worktree add -q --detach "$wt" "$head"
   trap 'git worktree remove --force "$wt"' EXIT
   (cd "$wt" && build_and_test)
+  if [ "$dry" = 1 ]; then
+    say "dry run: nothing tagged or pushed. Would tag $newtag on origin/$line ($head)"
+    exit 0
+  fi
   say "tagging $newtag on origin/$line ($head)"
   git tag -s -a -m "$newtag" "$newtag" "$head"
   git push origin "refs/tags/$newtag"
   say "waiting for proxy.golang.org to resolve $newtag"
   for _ in $(seq 1 30); do
     if info=$(curl -fsS "https://proxy.golang.org/$MODULE/@v/$newtag.info" 2>/dev/null); then
-      echo "$info"; say "done: $newtag"; exit 0
+      echo "$info"
+      case "$info" in
+        *"\"Hash\":\"$head\""*) say "done: $newtag resolves to $head"; exit 0 ;;
+        *) die "the proxy resolves $newtag to a different commit than $head; do not pin it" ;;
+      esac
     fi
     sleep 10
   done
@@ -128,7 +146,9 @@ add_worktree() { # <start-point>
   trap cleanup EXIT
 }
 
-if [ -z "$base" ] && git rev-parse -q --verify "refs/remotes/origin/$line" >/dev/null; then
+if [ "$new_line" = 1 ]; then
+  base=''
+elif [ -z "$base" ] && git rev-parse -q --verify "refs/remotes/origin/$line" >/dev/null; then
   base="origin/$line"
 fi
 
@@ -150,22 +170,45 @@ if [ -n "$base" ]; then
 else
   src=${from_line:-origin/xion/main}
   src_base=$(line_base_tag "$src")
-  say "new line $line: $utag + the patch stack of $src (stack = $src_base..$src, merges skipped)"
+  say "new line $line: $utag + the patch stack of $src (our commits since $src_base, without upstream history)"
   add_worktree "$utag_commit"
   cd "$wt"
-  stack=$(git rev-list --reverse --no-merges "$src_base..$src")
+  # The stack is our commits only: exclude the ancestry of every upstream
+  # tag merged into the source line, not just the tag it started from.
+  excludes=("^$src_base")
+  for t in $(git tag --merged "$src"); do
+    if is_upstream_tag "$t"; then excludes+=("^$t"); fi
+  done
+  stack=$(git rev-list --reverse --no-merges "$src" "${excludes[@]}")
+  picked=()
   for c in $stack; do
-    if ! git cherry-pick -S -x "$c"; then
-      if [ -n "$(git diff --name-only --diff-filter=U)" ]; then
-        echo "Conflict on $(git log -1 --format='%h %s' "$c"). Resolve in $wt, then: git add -A && git cherry-pick --continue, and re-run the rest by hand." >&2
-        keep=1
-        exit 2
-      fi
+    if git cherry-pick -S -x "$c"; then
+      picked+=("$c:$(git rev-parse HEAD)")
+    elif [ -n "$(git diff --name-only --diff-filter=U)" ]; then
+      echo "Conflict on $(git log -1 --format='%h %s' "$c"). Resolve in $wt, then: git add -A && git cherry-pick --continue, and pick the rest of the stack by hand." >&2
+      keep=1
+      exit 2
+    elif git diff --cached --quiet; then
+      say "skipping $(git log -1 --format='%h %s' "$c"): already in $utag"
+      git cherry-pick --skip
+      picked+=("$c:skipped")
+    else
       git commit -S --no-edit
+      picked+=("$c:$(git rev-parse HEAD)")
     fi
   done
-  say "range-diff of the stack ($src_base..$src vs $utag..HEAD)"
-  git --no-pager range-diff --no-color "$src_base..$src" "$utag..HEAD" || true
+  # range-diff takes plain ranges, and the stack is not one, so compare each
+  # picked commit with its source by patch-id ("=" same patch, "!" changed).
+  say "stack check against $src (= unchanged, ! changed: inspect with git range-diff <old>^! <new>^!)"
+  for pair in "${picked[@]}"; do
+    c=${pair%%:*} new_c=${pair#*:}
+    if [ "$new_c" = skipped ]; then mark='-'; else
+      old_id=$(git show "$c" | git patch-id --stable | cut -d' ' -f1)
+      new_id=$(git show "$new_c" | git patch-id --stable | cut -d' ' -f1)
+      mark='!'; [ "$old_id" = "$new_id" ] && mark='='
+    fi
+    printf '%s %.8s -> %.8s %s\n' "$mark" "$c" "$new_c" "$(git log -1 --format=%s "$c")"
+  done
 fi
 
 say "our commits on top of $utag:"
