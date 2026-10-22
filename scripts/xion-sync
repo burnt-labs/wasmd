@@ -85,10 +85,14 @@ line_base_tag() {
 
 build_and_test() {
   say "go build ./..."
-  go build ./...
+  go build -mod=readonly ./...
   if [ "$skip_tests" = 1 ]; then say "skipping tests (--skip-tests)"; return; fi
   say "go test ./x/wasm/... (tags: $TEST_TAGS)"
   go test -mod=readonly -count=1 -tags="$TEST_TAGS" ./x/wasm/...
+  # What gets pushed or tagged is the commit, so the checks must not have
+  # needed any change to it.
+  [ -z "$(git status --porcelain)" ] || die "the build or tests changed the worktree:
+$(git status --short)"
 }
 
 # Next free -xion.N for $utag. Both lookups must succeed: a name that is gone
@@ -122,9 +126,18 @@ if [ "$mode" = tag ]; then
   fi
   now=$(git ls-remote origin "refs/heads/$line" | cut -f1)
   [ "$now" = "$head" ] || die "origin/$line moved from $head to $now during the checks; run --tag again"
+  # A local tag of this name that origin does not have is left over from a
+  # failed push: it was never published, so it may be replaced.
+  if git rev-parse -q --verify "refs/tags/$newtag" >/dev/null; then
+    say "removing the unpublished local tag $newtag from an earlier failed run"
+    git tag -d "$newtag" >/dev/null
+  fi
   say "tagging $newtag on origin/$line ($head)"
   git tag -s -a -m "$newtag" "$newtag" "$head"
-  git push origin "refs/tags/$newtag"
+  if ! git push origin "refs/tags/$newtag"; then
+    git tag -d "$newtag" >/dev/null
+    die "pushing $newtag failed; the local tag is removed, so fix the push and run --tag again"
+  fi
   say "waiting for proxy.golang.org to resolve $newtag"
   for _ in $(seq 1 30); do
     if info=$(curl -fsS "https://proxy.golang.org/$MODULE/@v/$newtag.info" 2>/dev/null); then
@@ -252,7 +265,8 @@ git --no-pager log --oneline --no-merges "$utag..HEAD" | cat
 build_and_test
 
 if [ "$dry" = 1 ]; then
-  say "dry run: nothing pushed or tagged. After the PR lands, the tag would be $(cd "$repo" && next_tag)"
+  nt=$(cd "$repo" && next_tag)
+  say "dry run: nothing pushed or tagged. After the PR lands, the tag would be $nt"
   exit 0
 fi
 

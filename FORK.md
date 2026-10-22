@@ -47,6 +47,7 @@ None of these are upstream PRs yet; upstreaming one shrinks the stack.
 | `88c5db29` | docs: give the fork release its own changelog section | Fork releases are listed separately from upstream's. | fork-only |
 | `25284f70` | docs(security): pause the bug bounty program (#26) | Current security policy. | fork-only |
 | `6ce91b14` | docs(changelog): v0.70.5-xion.4 section | Names the release XION v32 pins. | fork-only |
+| wasmd#31 (squash) | docs: per-line fork model, FORK.md and scripts/xion-sync | This file, AGENTS.md and the sync/tag script that keep the fork's process repeatable. | fork-only |
 
 The same concerns on the v0.61 line, compared with
 `git range-diff v0.61.15..v0.61.15-xion.2 v0.70.5..xion/v0.70.x`: ci/docs and
