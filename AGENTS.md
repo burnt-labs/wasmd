@@ -45,3 +45,8 @@ Rewriting `xion/main` needs a force-push, so build the new line beside it:
 A fix on an existing line works the same way: a branch from the current
 tag's commit, the extra commits, a merge-commit PR into `xion/main`, and the
 next `-xion.N` on the branch tip.
+
+A line for an older upstream tag than the one `xion/main` carries, such as
+a patch release on the previous minor line, is merged with
+`git merge -s ours`. The merge brings the line into `xion/main`'s history
+without changing `xion/main`'s files. Then tag that line's tip as usual.
